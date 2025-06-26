@@ -8,7 +8,7 @@ import { Button } from "../componets/Button";
 import { Modal } from "../componets/Modal";
 import SignupForm from "../componets/authForm/SignupForm";
 import LoginForm from "../componets/authForm/LoginForm";
-import { useDocumentQuery } from "@/lib/documentQueryContext";
+import { useDocumentQuery } from "@/context/documentQueryContext";
 
 // Interface for component props
 interface LandingPageProps {
@@ -78,10 +78,6 @@ export default function LandingPage({ initialModal = null }: LandingPageProps) {
         <p className="text-xs text-gray-400 mt-2">
           Your input is private and encrypted. Only you can access your
           documents.
-        </p>
-
-        <p className="text-sm text-gray-500 mt-10">
-          Every question is important. Review documents carefully.
         </p>
 
         <div className="mt-8 flex items-center justify-center gap-1">

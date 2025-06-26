@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { DocumentQueryProvider } from "@/lib/documentQueryContext";
+import { DocumentQueryProvider } from "@/context/documentQueryContext";
 import ConditionalAuthNavbar from "./componets/navigationBar/ConditionAuthNavbar";
 
 const geistSans = Geist({
