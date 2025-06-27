@@ -1,15 +1,15 @@
-import { DocumentState, DocumentHistoryEntry, ConversationHistoryEntry } from "./documentState";
+import { State, DocumentHistoryEntry, ConversationHistoryEntry } from "./state";
 
-// Storage keys (update if you want to namespace)
+// Storage keys
 const STORAGE_KEYS = {
-  SESSION: "docgen_session",
-  DOCUMENT_HISTORY: "docgen_document_history",
-  CONVERSATION_HISTORY: "docgen_conversation_history",
-  CONSENT: "docgen_user_consent",
+  SESSION:              "session",
+  DOCUMENT_HISTORY:     "document_history",
+  CONVERSATION_HISTORY: "conversation_history",
+  CONSENT:              "user_consent",
 };
 
 // --- Session ---
-export function saveSession(state: DocumentState) {
+export function saveSession(state: State) {
   localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify({
     ...state,
     // Avoid storing streaming content and loading state
@@ -19,7 +19,7 @@ export function saveSession(state: DocumentState) {
   }));
 }
 
-export function loadSession(): Partial<DocumentState> | null {
+export function loadSession(): Partial<State> | null {
   const data = localStorage.getItem(STORAGE_KEYS.SESSION);
   return data ? JSON.parse(data) : null;
 }

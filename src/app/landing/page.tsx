@@ -8,7 +8,7 @@ import { Button } from "../componets/Button";
 import { Modal } from "../componets/Modal";
 import SignupForm from "../componets/authForm/SignupForm";
 import LoginForm from "../componets/authForm/LoginForm";
-import { useDocumentQuery } from "@/context/documentQueryContext";
+import { useDocumentQuery } from "@/context/promptContext";
 
 // Interface for component props
 interface LandingPageProps {

@@ -1,54 +1,50 @@
-import { DocumentState, MissingData, ProvidedField, DocumentHistoryEntry, ConversationHistoryEntry } from "./documentState";
+import { State, MissingData, ProvidedField, DocumentHistoryEntry, ConversationHistoryEntry } from "./state";
 
-// --- Action Types ---
 
 export const actionTypes = {
-  SET_LOADING: "SET_LOADING",
-  SET_ERROR: "SET_ERROR",
-  CLEAR_ERROR: "CLEAR_ERROR",
+  SET_LOADING:                  "SET_LOADING",
+  SET_ERROR:                    "SET_ERROR",
+  CLEAR_ERROR:                  "CLEAR_ERROR",
 
-  START_SESSION: "START_SESSION",
-  SET_SESSION_STATUS: "SET_SESSION_STATUS",
+  START_SESSION:                "START_SESSION",
+  SET_SESSION_STATUS:           "SET_SESSION_STATUS",
 
-  SET_ORIGINAL_PROMPT: "SET_ORIGINAL_PROMPT",
-  SET_DOCUMENT_TYPE: "SET_DOCUMENT_TYPE",
-  SET_SUGGESTED_TITLE: "SET_SUGGESTED_TITLE",
+  SET_ORIGINAL_PROMPT:          "SET_ORIGINAL_PROMPT",
+  SET_DOCUMENT_TYPE:            "SET_DOCUMENT_TYPE",
+  SET_SUGGESTED_TITLE:          "SET_SUGGESTED_TITLE",
 
-  SET_MISSING_DATA: "SET_MISSING_DATA",
-  CLEAR_MISSING_DATA: "CLEAR_MISSING_DATA",
-  SET_PROVIDED_DATA: "SET_PROVIDED_DATA",
-  ADD_PROVIDED_DATA: "ADD_PROVIDED_DATA",
+  SET_MISSING_DATA:             "SET_MISSING_DATA",
+  CLEAR_MISSING_DATA:           "CLEAR_MISSING_DATA",
+  SET_PROVIDED_DATA:            "SET_PROVIDED_DATA",
+  ADD_PROVIDED_DATA:            "ADD_PROVIDED_DATA",
 
-  SET_STREAMING_STATUS: "SET_STREAMING_STATUS",
-  SET_STREAMING_CONTENT: "SET_STREAMING_CONTENT",
-  ADD_STREAMING_CHUNK: "ADD_STREAMING_CHUNK",
+  SET_STREAMING_STATUS:         "SET_STREAMING_STATUS",
+  SET_STREAMING_CONTENT:        "SET_STREAMING_CONTENT",
+  ADD_STREAMING_CHUNK:          "ADD_STREAMING_CHUNK",
 
-  SET_DOCUMENT_CONTENT: "SET_DOCUMENT_CONTENT",
-  CLEAR_DOCUMENT_CONTENT: "CLEAR_DOCUMENT_CONTENT",
+  SET_DOCUMENT_CONTENT:         "SET_DOCUMENT_CONTENT",
+  CLEAR_DOCUMENT_CONTENT:       "CLEAR_DOCUMENT_CONTENT",
 
-  UPDATE_PROGRESS: "UPDATE_PROGRESS",
+  UPDATE_PROGRESS:              "UPDATE_PROGRESS",
 
-  ADD_TO_DOCUMENT_HISTORY: "ADD_TO_DOCUMENT_HISTORY",
-  SET_DOCUMENT_HISTORY: "SET_DOCUMENT_HISTORY",
-  ADD_TO_CONVERSATION_HISTORY: "ADD_TO_CONVERSATION_HISTORY",
-  SET_CONVERSATION_HISTORY: "SET_CONVERSATION_HISTORY",
+  ADD_TO_DOCUMENT_HISTORY:      "ADD_TO_DOCUMENT_HISTORY",
+  SET_DOCUMENT_HISTORY:         "SET_DOCUMENT_HISTORY",
+  ADD_TO_CONVERSATION_HISTORY:  "ADD_TO_CONVERSATION_HISTORY",
+  SET_CONVERSATION_HISTORY:     "SET_CONVERSATION_HISTORY",
 
-  SET_USER_CONSENT: "SET_USER_CONSENT",
+  SET_USER_CONSENT:             "SET_USER_CONSENT",
 
-  RESET_SESSION: "RESET_SESSION",
+  RESET_SESSION:                "RESET_SESSION",
 } as const;
 
-export type ActionType = typeof actionTypes[keyof typeof actionTypes];
-
-// --- Action Types ---
 
 export type DocumentAction =
   | { type: typeof actionTypes.SET_LOADING; payload: boolean }
   | { type: typeof actionTypes.SET_ERROR; payload: string }
   | { type: typeof actionTypes.CLEAR_ERROR }
 
-  | { type: typeof actionTypes.START_SESSION; payload: { sessionId: string } }
-  | { type: typeof actionTypes.SET_SESSION_STATUS; payload: DocumentState["sessionStatus"] }
+  | {type: typeof actionTypes.START_SESSION; payload: { sessionId: string } }
+  | { type: typeof actionTypes.SET_SESSION_STATUS; payload: State["sessionStatus"] }
 
   | { type: typeof actionTypes.SET_ORIGINAL_PROMPT; payload: string }
   | { type: typeof actionTypes.SET_DOCUMENT_TYPE; payload: string }
@@ -77,12 +73,11 @@ export type DocumentAction =
 
   | { type: typeof actionTypes.RESET_SESSION };
 
-// --- Reducer Function ---
 
-export function documentReducer(
-  state: DocumentState,
+export function reducer(
+  state:  State,
   action: DocumentAction
-): DocumentState {
+): State {
   switch (action.type) {
     case actionTypes.SET_LOADING:
       return { ...state, loading: action.payload };
@@ -96,19 +91,19 @@ export function documentReducer(
     case actionTypes.START_SESSION:
       return {
         ...state,
-        sessionId: action.payload.sessionId,
-        sessionStatus: "starting",
+        sessionId:      action.payload.sessionId,
+        sessionStatus:  "starting",
         originalPrompt: "",
-        documentType: null,
+        documentType:   null,
         suggestedTitle: "",
-        missingData: { fields: [], message: "" },
-        providedData: [],
+        missingData:    { fields: [], message: "" },
+        providedData:   [],
         streamingContent: "",
         documentContent: "",
-        isStreaming: false,
-        progress: { current: 0, total: 0 },
-        loading: false,
-        error: null
+        isStreaming:    false,
+        progress:       { current: 0, total: 0 },
+        loading:        false,
+        error:          null
       };
 
     case actionTypes.SET_SESSION_STATUS:
@@ -175,20 +170,20 @@ export function documentReducer(
     case actionTypes.RESET_SESSION:
       // documentHistory/conversationHistory/userConsentGiven persist
       return {
-        sessionId: null,
-        sessionStatus: "idle",
-        loading: false,
-        error: null,
-        originalPrompt: "",
-        documentType: null,
-        suggestedTitle: "",
-        missingData: { fields: [], message: "" },
-        providedData: [],
+        sessionId:        null,
+        sessionStatus:    "idle",
+        loading:          false,
+        error:            null,
+        originalPrompt:   "",
+        documentType:     null,
+        suggestedTitle:   "",
+        missingData:      { fields: [], message: "" },
+        providedData:     [],
         streamingContent: "",
-        documentContent: "",
-        isStreaming: false,
-        progress: { current: 0, total: 0 },
-        documentHistory: state.documentHistory,
+        documentContent:  "",
+        isStreaming:      false,
+        progress:         { current: 0, total: 0 },
+        documentHistory:  state.documentHistory,
         conversationHistory: state.conversationHistory,
         userConsentGiven: state.userConsentGiven
       };

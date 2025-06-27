@@ -1,19 +1,19 @@
 // Single missing field required by backend
 export interface MissingField {
-    field: string;
-    explanation: string;
-    example: string;
+    field:        string;
+    explanation:  string;
+    example:      string;
   }
   
   // Missing data prompt structure
   export interface MissingData {
-    fields: MissingField[];
-    message: string;
+    fields:   MissingField[];
+    message:  string;
   }
   
   // Single provided field/answer pair
   export interface ProvidedField {
-    field: string;
+    field:  string;
     answer: string;
   }
   
@@ -22,65 +22,64 @@ export interface MissingField {
   
   // Document history entry
   export interface DocumentHistoryEntry {
-    id: string;
-    title: string;
+    id:           string;
+    title:        string;
     documentType: string;
-    content: string;
-    createdAt: string;
+    content:      string;
+    createdAt:    string;
   }
   
   // Conversation history entry
   export interface ConversationHistoryEntry {
-    prompt: string;
-    missingData?: MissingData;
-    providedData?: ProvidedField[];
+    prompt:         string;
+    missingData?:   MissingData;
+    providedData?:  ProvidedField[];
     documentContent: string;
-    createdAt: string;
+    createdAt:      string;
   }
   
   // Main document state interface
-  export interface DocumentState {
+  export interface State {
     // Session
-    sessionId: string | null;
-    sessionStatus: "idle" | "starting" | "missing_info" | "generating" | "completed" | "error";
-    loading: boolean;
-    error: string | null;
+    sessionId:      string | null;
+    sessionStatus:  "idle" | "starting" | "missing_info" | "generating" | "completed" | "error";
+    loading:        boolean;
+    error:          string | null;
   
     // User input and doc setup
     originalPrompt: string;
-    documentType: string | null;
+    documentType:   string | null;
     suggestedTitle: string;
   
     // Missing fields flow
-    missingData: MissingData;
-    providedData: ProvidedField[];
+    missingData:    MissingData;
+    providedData:   ProvidedField[];
   
     // Streaming and output
     streamingContent: string;
-    documentContent: string;
-    isStreaming: boolean;
-    progress: { current: number; total: number };
+    documentContent:  string;
+    isStreaming:      boolean;
+    progress:         { current: number; total: number };
   
     // History
-    documentHistory: DocumentHistoryEntry[];
-    conversationHistory: ConversationHistoryEntry[];
+    documentHistory:      DocumentHistoryEntry[];
+    conversationHistory:  ConversationHistoryEntry[];
   
     // Privacy
     userConsentGiven: boolean;
   }
   
   // --- Initial state ---
-  
-  export const initialState: DocumentState = {
+  export const initialState: State = {
     // Session
-    sessionId: null,
-    sessionStatus: "idle",
-    loading: false,
-    error: null,
+    sessionId:      null,
+    sessionStatus:  "idle",
+    loading:        false,
+    error:          null,
   
     // User input
     originalPrompt: "",
-    documentType: null,
+    documentType:   null,
     suggestedTitle: "",
   
     // Missing data/fields
@@ -92,12 +91,12 @@ export interface MissingField {
   
     // Streaming and final output
     streamingContent: "",
-    documentContent: "",
-    isStreaming: false,
-    progress: { current: 0, total: 0 },
+    documentContent:  "",
+    isStreaming:      false,
+    progress:         { current: 0, total: 0 },
   
     // History
-    documentHistory: [],
+    documentHistory:     [],
     conversationHistory: [],
   
     // Privacy

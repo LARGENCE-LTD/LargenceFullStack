@@ -1,19 +1,19 @@
-import { Dispatch } from "react";
-import { DocumentState, ProvidedField, MissingData, DocumentHistoryEntry, ConversationHistoryEntry } from "./documentState";
-import { DocumentAction, actionTypes } from "./documentReducer";
-import { documentAPI } from "./documentAPI";
-import { saveSession, loadSession, saveHistory, loadHistory } from "./localStorageUtils";
+import {Dispatch} from "react";
+import {DocAPI} from "./docAPI";
+import {actionTypes, DocumentAction} from "./reducer";
+import {ConversationHistoryEntry, DocumentHistoryEntry, ProvidedField, State} from "./state";
+import {loadHistory, loadSession} from "./utils";
 
 // The main actions hook/factory
-export function useDocumentActions(state: DocumentState, dispatch: Dispatch<DocumentAction>) {
+export function useDocumentActions(state: State, dispatch: Dispatch<DocumentAction>) {
   // Start a new document generation session
   const startSession = async (prompt: string, documentType: string, suggestedTitle: string) => {
     dispatch({ type: actionTypes.SET_LOADING, payload: true });
     dispatch({ type: actionTypes.SET_ERROR, payload: "" });
 
     try {
-      // API call to backend to start a new session
-      const response = await documentAPI.startSession(prompt, documentType);
+      // DocAPI call to backend to start a new session
+      const response = await DocAPI.startSession(prompt, documentType);
 
       dispatch({ type: actionTypes.START_SESSION, payload: { sessionId: response.sessionId } });
       dispatch({ type: actionTypes.SET_SESSION_STATUS, payload: "generating" });
@@ -24,10 +24,12 @@ export function useDocumentActions(state: DocumentState, dispatch: Dispatch<Docu
       // If streaming, handle separately in UI
       // You could trigger startStreaming here if desired
 
-    } catch (error: any) {
-      dispatch({ type: actionTypes.SET_ERROR, payload: error.message || "Failed to start session" });
-    } finally {
-      dispatch({ type: actionTypes.SET_LOADING, payload: false });
+    } catch (error: unknown) {
+      let errorMessage = "Failed to start session";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      dispatch({ type: actionTypes.SET_ERROR, payload: errorMessage });
     }
   };
 
@@ -37,8 +39,8 @@ export function useDocumentActions(state: DocumentState, dispatch: Dispatch<Docu
     dispatch({ type: actionTypes.CLEAR_ERROR });
 
     try {
-      // API call to submit missing fields
-      const response = await documentAPI.submitMissingData(sessionId, providedData);
+      // DocAPI call to submit missing fields
+      const response = await DocAPI.submitMissingData(sessionId, providedData);
 
       // Update missing data or mark as generating again
       if (response.missingData && response.missingData.fields.length > 0) {
@@ -49,8 +51,12 @@ export function useDocumentActions(state: DocumentState, dispatch: Dispatch<Docu
       }
       dispatch({ type: actionTypes.SET_PROVIDED_DATA, payload: providedData });
 
-    } catch (error: any) {
-      dispatch({ type: actionTypes.SET_ERROR, payload: error.message || "Failed to submit missing data" });
+    } catch (error: unknown) {
+      let errorMessage = "Failed to submit missing data";
+        if (error instanceof Error) {
+            errorMessage = error.message;
+        }
+      dispatch({ type: actionTypes.SET_ERROR, payload: errorMessage });
     } finally {
       dispatch({ type: actionTypes.SET_LOADING, payload: false });
     }
@@ -61,7 +67,7 @@ export function useDocumentActions(state: DocumentState, dispatch: Dispatch<Docu
     dispatch({ type: actionTypes.SET_STREAMING_STATUS, payload: true });
 
     try {
-      await documentAPI.streamDocument(
+      await DocAPI.streamDocument(
         sessionId,
         (chunk: string) => {
           dispatch({ type: actionTypes.ADD_STREAMING_CHUNK, payload: chunk });
@@ -70,7 +76,7 @@ export function useDocumentActions(state: DocumentState, dispatch: Dispatch<Docu
           dispatch({ type: actionTypes.SET_DOCUMENT_CONTENT, payload: finalContent });
           dispatch({ type: actionTypes.SET_SESSION_STATUS, payload: "completed" });
 
-          // Optionally, add to history
+          // add to history
           const historyEntry: DocumentHistoryEntry = {
             id: `doc_${Date.now()}`,
             title: state.suggestedTitle || "Generated Document",
@@ -97,8 +103,12 @@ export function useDocumentActions(state: DocumentState, dispatch: Dispatch<Docu
           dispatch({ type: actionTypes.SET_ERROR, payload: error });
         }
       );
-    } catch (error: any) {
-      dispatch({ type: actionTypes.SET_ERROR, payload: error.message || "Failed to stream document" });
+    } catch (error: unknown) {
+      let errorMessage = "Failed to stream document";
+        if (error instanceof Error) {
+            errorMessage = error.message;
+        }
+      dispatch({ type: actionTypes.SET_ERROR, payload: errorMessage });
     } finally {
       dispatch({ type: actionTypes.SET_STREAMING_STATUS, payload: false });
     }
@@ -108,11 +118,14 @@ export function useDocumentActions(state: DocumentState, dispatch: Dispatch<Docu
   const exportDocument = async (documentId: string, format: string) => {
     dispatch({ type: actionTypes.SET_LOADING, payload: true });
     try {
-      const response = await documentAPI.exportDocument(documentId, format);
-      // Implement: show download link, save file, etc.
-      return response;
-    } catch (error: any) {
-      dispatch({ type: actionTypes.SET_ERROR, payload: error.message || "Export failed" });
+      //TODO: Implement: show download link, save file, etc.
+      return await DocAPI.exportDocument(documentId, format);
+    } catch (error: unknown) {
+        let errorMessage = "Failed to export document";
+        if (error instanceof Error) {
+            errorMessage = error.message;
+        }
+      dispatch({ type: actionTypes.SET_ERROR, payload: errorMessage });
       throw error;
     } finally {
       dispatch({ type: actionTypes.SET_LOADING, payload: false });

@@ -1,7 +1,7 @@
 // You can use fetch or axios. Here we use fetch for simplicity.
 const API_BASE_URL = "/api/documents";
 
-export const documentAPI = {
+export const DocAPI = {
   // Start a new document generation session
   async startSession(prompt: string, documentType: string) {
     const response = await fetch(`${API_BASE_URL}/start-session`, {
