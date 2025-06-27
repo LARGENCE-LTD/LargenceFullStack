@@ -81,8 +81,8 @@ export default function LoginForm({ onSwitch }: { onSwitch: () => void }) {
       // Store token in localStorage (consider HttpOnly cookies for better security)
       localStorage.setItem("auth_token", response.data.token);
 
-      // Redirect to dashboard
-      router.push("/dashboard");
+      // Redirect to application main page
+      router.push("/mainHome");
     } catch (error: any) {
       const errorMessage =
         error.response?.data?.message || "Login failed. Please try again.";

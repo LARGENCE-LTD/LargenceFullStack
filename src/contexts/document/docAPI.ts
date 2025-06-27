@@ -1,6 +1,7 @@
-// You can use fetch or axios. Here we use fetch for simplicity.
-const API_BASE_URL = "/api/documents";
+import {ProvidedField} from "@/contexts/document/state";
+import { API_BASE_URL } from './constants';
 
+// You can use fetch or axios. Here we use fetch for simplicity.
 export const DocAPI = {
   // Start a new document generation session
   async startSession(prompt: string, documentType: string) {
@@ -14,7 +15,7 @@ export const DocAPI = {
   },
 
   // Submit missing data to continue session
-  async submitMissingData(sessionId: string, providedData: any) {
+  async submitMissingData(sessionId: string, providedData: ProvidedField[]) {
     const response = await fetch(`${API_BASE_URL}/${sessionId}/missing-data`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

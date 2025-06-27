@@ -1,16 +1,9 @@
 import { State, DocumentHistoryEntry, ConversationHistoryEntry } from "./state";
-
-// Storage keys
-const STORAGE_KEYS = {
-  SESSION:              "session",
-  DOCUMENT_HISTORY:     "document_history",
-  CONVERSATION_HISTORY: "conversation_history",
-  CONSENT:              "user_consent",
-};
+import { STORAGE_KEYS } from "./constants";
 
 // --- Session ---
 export function saveSession(state: State) {
-  localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify({
+  localStorage.setItem(STORAGE_KEYS.DOCUMENT_SESSION, JSON.stringify({
     ...state,
     // Avoid storing streaming content and loading state
     streamingContent: "",
@@ -20,12 +13,12 @@ export function saveSession(state: State) {
 }
 
 export function loadSession(): Partial<State> | null {
-  const data = localStorage.getItem(STORAGE_KEYS.SESSION);
+  const data = localStorage.getItem(STORAGE_KEYS.DOCUMENT_SESSION);
   return data ? JSON.parse(data) : null;
 }
 
 export function removeSession() {
-  localStorage.removeItem(STORAGE_KEYS.SESSION);
+  localStorage.removeItem(STORAGE_KEYS.DOCUMENT_SESSION);
 }
 
 // --- Document History ---
@@ -58,10 +51,10 @@ export function removeConversationHistory() {
 
 // --- Consent ---
 export function saveUserConsent(consent: boolean) {
-  localStorage.setItem(STORAGE_KEYS.CONSENT, JSON.stringify(consent));
+  localStorage.setItem(STORAGE_KEYS.USER_CONSENT, JSON.stringify(consent));
 }
 
 export function loadUserConsent(): boolean {
-  const data = localStorage.getItem(STORAGE_KEYS.CONSENT);
+  const data = localStorage.getItem(STORAGE_KEYS.USER_CONSENT);
   return data ? JSON.parse(data) : false;
 }

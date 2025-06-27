@@ -1,43 +1,53 @@
 import React from "react";
+import { Button } from "./Button";
 
-// Interface for Modal props
+import { X } from "lucide-react";
+
 interface ModalProps {
   open: boolean;
   onClose: () => void;
   children: React.ReactNode;
-  className?: string; // For custom modal content styling
-  backdropClassName?: string; // For custom backdrop styling
+  className?: string;
+  backdropClassName?: string;
+  contentClassName?: string;
+  content_bg?: string;
 }
 
-// Modal component
 export function Modal({
   open,
   onClose,
   children,
   className = "",
-  backdropClassName = "bg-black/50 backdrop-blur-sm",
+  backdropClassName = "bg-black/10 backdrop-blur-[2px]",
+  contentClassName = "w-full max-w-md",
+  content_bg = "bg-white",
 }: ModalProps) {
   if (!open) return null;
 
   return (
     <div
-      className={`fixed inset-0 z-50 ${backdropClassName}`}
+      className={`fixed inset-0 z-50 flex items-center justify-center ${backdropClassName}`}
       role="dialog"
       aria-modal="true"
-      onClick={onClose} // Close modal when clicking outside
+      onClick={onClose}
     >
       <div
-        className={`flex items-center justify-center min-h-screen p-4 ${className}`}
-        onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
+        className={`flex items-center justify-center min-h-screen w-full p-4 ${className}`}
+        onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-white rounded-xl shadow-lg p-1 sm:p-4 relative w-full max-w-md">
-          <button
+        <div
+          className={`
+            ${content_bg} rounded-xl shadow-lg relative
+            ${contentClassName}
+          `}
+        >
+          <Button
             onClick={onClose}
-            className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-2xl"
+            className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 cursor-pointer"
             aria-label="Close modal"
           >
-            ×
-          </button>
+            <X className="h-6 w-6" />
+          </Button>
           {children}
         </div>
       </div>

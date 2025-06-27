@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { DocumentPromptProvider } from "@/context/promptContext";
+import { DocumentPromptProvider } from "@/contexts/promptContext";
+import { UserProvider } from "@/contexts/user/context";
 import ConditionalAuthNavbar from "./componets/navigationBar/ConditionAuthNavbar";
 
 const geistSans = Geist({
@@ -29,9 +30,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <DocumentPromptProvider>
-          <ConditionalAuthNavbar>{children}</ConditionalAuthNavbar>
-        </DocumentPromptProvider>
+        <UserProvider>
+          <DocumentPromptProvider>
+            <ConditionalAuthNavbar>{children}</ConditionalAuthNavbar>
+          </DocumentPromptProvider>
+        </UserProvider>
       </body>
     </html>
   );

@@ -6,9 +6,11 @@ import { ArrowRight } from "lucide-react";
 
 import { Button } from "../componets/Button";
 import { Modal } from "../componets/Modal";
+
 import SignupForm from "../componets/authForm/SignupForm";
 import LoginForm from "../componets/authForm/LoginForm";
-import { useDocumentQuery } from "@/context/promptContext";
+
+import { useDocumentQuery } from "@/contexts/promptContext";
 
 // Interface for component props
 interface LandingPageProps {
@@ -98,12 +100,8 @@ export default function LandingPage({ initialModal = null }: LandingPageProps) {
           setModal(null);
           if (initialModal) router.push("/");
         }}
-        className="flex items-center justify-center"
-        backdropClassName="bg-black/10 backdrop-blur-[2px]"
       >
-        <div className="max-w-md w-full">
-          <LoginForm onSwitch={() => setModal("signup")} />
-        </div>
+        <LoginForm onSwitch={() => setModal("signup")} />
       </Modal>
 
       {/* Modal for Signup */}
@@ -113,12 +111,8 @@ export default function LandingPage({ initialModal = null }: LandingPageProps) {
           setModal(null);
           if (initialModal) router.push("/");
         }}
-        className="flex items-center justify-center"
-        backdropClassName="bg-black/10 backdrop-blur-[2px]"
       >
-        <div className="max-w-md w-full">
-          <SignupForm onSwitch={() => setModal("login")} />
-        </div>
+        <SignupForm onSwitch={() => setModal("login")} />
       </Modal>
     </div>
   );

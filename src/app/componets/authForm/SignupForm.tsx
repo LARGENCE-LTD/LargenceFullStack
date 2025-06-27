@@ -116,7 +116,8 @@ export default function SignupForm({ onSwitch }: SignupFormProps) {
       setLoading(true);
       setGeneralError(null);
       await axios.post("/api/users/signup", formData);
-      onSwitch();
+
+      onSwitch(); // Switch to login form
     } catch (error: any) {
       const errorMessage =
         error.response?.data?.message || "Signup failed. Please try again.";

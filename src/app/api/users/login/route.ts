@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
-import { connect } from '@/database/config';
-import { User } from '@/models/User';
-import bcryptjs from 'bcryptjs';
+import { StatusCodes } from "http-status-codes";
+import { NextRequest, NextResponse } from "next/server";
+import { connect } from "@/database/config";
+import { User } from "@/models/User";
+import bcryptjs from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,8 +16,8 @@ export async function POST(request: NextRequest) {
     // Validate required fields
     if (!email || !password) {
       return NextResponse.json(
-        { message: 'Email and password are required' },
-        { status: 400 }
+        { message: "Email and password are required" },
+        { status: StatusCodes.BAD_REQUEST }
       );
     }
 
@@ -24,8 +25,8 @@ export async function POST(request: NextRequest) {
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
       return NextResponse.json(
-        { message: 'Invalid email or password' },
-        { status: 401 }
+        { message: "User not found, try creating an account" },
+        { status: StatusCodes.UNAUTHORIZED }
       );
     }
 
@@ -33,46 +34,43 @@ export async function POST(request: NextRequest) {
     const isPasswordValid = await bcryptjs.compare(password, user.password);
     if (!isPasswordValid) {
       return NextResponse.json(
-        { message: 'Invalid email or password' },
-        { status: 401 }
+        { message: "Invalid email or password, try again" },
+        { status: StatusCodes.UNAUTHORIZED }
       );
     }
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { 
-        userId: user._id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName
-      },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '7d' }
-    );
-
-    // Return success response
-    const userResponse = {
-      id: user._id,
+    const tokenData = {
+      id: user._id.toString(),
+      email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      email: user.email,
     };
 
-    return NextResponse.json(
-      { 
-        message: 'Login successful',
-        user: userResponse,
-        token 
+    // Generate JWT token
+    const token = jwt.sign(tokenData, process.env.TOKEN_SECRET!, {
+      expiresIn: "2d",
+    });
+
+    const response = NextResponse.json(
+      {
+        message: "Login successful",
+        user: tokenData,
+        token,
       },
-      { status: 200 }
+      { status: StatusCodes.OK }
     );
 
+    response.cookies.set("token", token, {
+      httpOnly: true,
+    });
+
+    return response;
   } catch (error: any) {
-    console.error('Login error:', error);
-    
+    console.error("Login error:", error);
+
     return NextResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 }
+      { error: error.message },
+      { status: StatusCodes.INTERNAL_SERVER_ERROR }
     );
   }
 }

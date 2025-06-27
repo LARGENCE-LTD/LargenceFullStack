@@ -1,9 +1,10 @@
 "use client";
 
 import React, { createContext, useContext, useReducer } from "react";
-import { initialState, State } from "./state";
+import { State } from "./state";
 import { reducer } from "./reducer";
 import { useDocumentActions } from "./actions";
+import { initialState } from "./state";
 
 // Create the context types
 interface DocumentContextType {

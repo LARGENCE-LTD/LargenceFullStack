@@ -1,110 +1,142 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  useUser,
+  useUserProfile,
+  useUserSubscription,
+  useUserUsage,
+  useUserActivities,
+} from "@/contexts/user/context";
 import { Button } from "@/app/componets/Button";
+import { Loading } from "@/app/componets/Loading";
 
-interface UserProfile {
-  firstName: string;
-  lastName: string;
-  email: string;
-}
+import OverviewTab from "./tabs/Overview";
+import DocumentsTab from "./tabs/Documents";
+import SettingsTab from "./tabs/Settings";
+import ActivityTab from "./tabs/Activity";
 
-interface Subscription {
-  plan: string;
-  status: string;
-  nextBill: Date;
-}
+import {
+  User,
+  FileText,
+  Settings,
+  LogOut,
+  Activity,
+  TrendingUp,
+} from "lucide-react";
 
-interface DashboardPageProps {
-  profile: UserProfile;
-  subscription: Subscription;
-}
+export default function DashboardPage() {
+  const router = useRouter();
+  const { state, actions } = useUser();
+  const profile = useUserProfile();
+  const subscription = useUserSubscription();
+  const usage = useUserUsage();
+  const activities = useUserActivities();
 
-export default function DashboardPage({
-  profile,
-  subscription,
-}: DashboardPageProps) {
-  return (
-    <div className="max-w-4xl mx-auto p-6">
-      {/* Header: Logo, App name*/}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <img
-            src="/logo.png"
-            alt="Largence Logo"
-            className="h-12 w-12 object-contain"
-          />
-          <h1 className="font-bold text-2xl text-gray-900">Largence</h1>
-        </div>
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "documents" | "settings" | "activity"
+  >("overview");
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!state.isAuthenticated && !state.loading) {
+      //router.push('/login');
+    }
+  }, [state.isAuthenticated, state.loading, router]);
+
+  // Handle logout
+  const handleLogout = async () => {
+    await actions.logout();
+    router.push("/");
+  };
+
+  // Loading state
+  if (state.loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loading size="large" text="Loading dashboard..." />
       </div>
+    );
+  }
 
-      {/* Slogan */}
-      <div className="mb-7 text-left">
-        <p className="text-gray-600 mt-2">
-          Legal documents at your fingertips.
-        </p>
-      </div>
-
-      {/* Profile & Subscription: two columns */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Profile */}
-        <div className="bg-gray-50 rounded-lg p-4 flex flex-col h-full">
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Profile</h2>
-            <div className="space-y-3 text-sm">
-              <div>
-                <label className="font-medium text-gray-600">Name</label>
-                <p className="text-gray-900">
-                  {profile.firstName} {profile.lastName}
-                </p>
-              </div>
-              <div>
-                <label className="font-medium text-gray-600">Email</label>
-                <p className="text-gray-900">{profile.email}</p>
-              </div>
-            </div>
-          </div>
-          <Button className="mt-auto w-fit bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded transition-colors text-sm cursor-pointer">
-            Edit Profile
-          </Button>
-        </div>
-
-        {/* Subscription */}
-        <div className="bg-gray-50 rounded-lg p-4 flex flex-col h-full">
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Subscription</h2>
-            <div className="space-y-3 text-sm">
-              <div>
-                <label className="font-medium text-gray-600">Plan</label>
-                <p className="text-gray-900">{subscription.plan}</p>
-              </div>
-              <div>
-                <label className="font-medium text-gray-600">Status</label>
-                <p className="text-gray-900">{subscription.status}</p>
-              </div>
-              <div>
-                <label className="font-medium text-gray-600">Next Bill</label>
-                <p className="text-gray-900">
-                  {subscription.nextBill.toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-          </div>
+  // Error state
+  if (state.error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">{state.error}</p>
           <Button
-            className="mt-6 w-fit bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors text-sm"
-            disabled
+            onClick={actions.clearError}
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"
           >
-            Upgrade Plan
+            Dismiss Error
           </Button>
         </div>
       </div>
+    );
+  }
 
-      {/* Footer */}
-      <div className="border-t pt-3 mt-6 text-center text-xs text-gray-500">
-        Largence v1.0.0 | All rights reserved | Need help? Contact{" "}
-        <a href="mailto:support@largence.com" className="underline">
-          support@largence.com
-        </a>
-      </div>
-    </div>
+  return (
+    <>
+      {/* Navigation Tabs */}
+      <nav>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-center space-x-8">
+            {[
+              { id: "overview", label: "Overview", icon: Activity },
+              { id: "documents", label: "Documents", icon: FileText },
+              { id: "settings", label: "Settings", icon: Settings },
+              { id: "activity", label: "Activity", icon: TrendingUp },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <Button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === tab.id
+                      ? "border-red-500 text-red-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {tab.label}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        {activeTab === "overview" && (
+          <OverviewTab
+            profile={profile}
+            subscription={subscription}
+            usage={usage}
+          />
+        )}
+        {activeTab === "documents" && <DocumentsTab />}
+        {activeTab === "settings" && <SettingsTab />}
+        {activeTab === "activity" && <ActivityTab activities={activities} />}
+      </main>
+    </>
   );
 }
+
+// {/* Modal for Dashboard */}
+// <Modal
+//   open={modal === "signup"}
+//   onClose={() => {
+//     setModal(null);
+//     if (initialModal) router.push("/");
+//   }}
+//   contentClassName="h-[650px] w-[950px] max-w-full max-h-[95vh] p-0"
+//   content_bg="bg-gray-50"
+// >
+//   <DashboardPage />
+// </Modal>
+
+// TODO: configure /dashboard route to pop dashboard if authenticated else redirect to /login
