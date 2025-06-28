@@ -5,6 +5,7 @@ type Field = {
   explanation: string;
   example: string;
 };
+
 type SessionDetailData = {
   id: string;
   title: string;
@@ -42,38 +43,42 @@ export default function SessionDetail({
           {new Date(session.createdAt).toLocaleString()}
         </div>
       </div>
-      <div className="mb-4">
-        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-          Prompt
+      {session.prompt && (
+        <div className="mb-4">
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+            Prompt
+          </div>
+          <div className="bg-gray-50 rounded px-2 py-1 text-sm">
+            {session.prompt}
+          </div>
         </div>
-        <div className="bg-gray-50 rounded px-2 py-1 text-sm">
-          {session.prompt}
+      )}
+      {session.missingFields.length > 0 && (
+        <div className="mb-4">
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+            Missing Fields
+          </div>
+          <ul className="space-y-2">
+            {session.missingFields.map((field) => (
+              <li key={field.field} className="bg-gray-50 rounded p-2">
+                <div className="font-medium text-gray-700">{field.field}</div>
+                <div className="text-xs text-gray-500 mb-1">
+                  {field.explanation}
+                </div>
+                <div className="text-xs text-gray-400 italic mb-1">
+                  e.g. {field.example}
+                </div>
+                <div className="text-xs text-green-700">
+                  Answer:{" "}
+                  <span className="font-semibold">
+                    {session.answers[field.field]}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
-      </div>
-      <div className="mb-4">
-        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-          Missing Fields
-        </div>
-        <ul className="space-y-2">
-          {session.missingFields.map((field) => (
-            <li key={field.field} className="bg-gray-50 rounded p-2">
-              <div className="font-medium text-gray-700">{field.field}</div>
-              <div className="text-xs text-gray-500 mb-1">
-                {field.explanation}
-              </div>
-              <div className="text-xs text-gray-400 italic mb-1">
-                e.g. {field.example}
-              </div>
-              <div className="text-xs text-green-700">
-                Answer:{" "}
-                <span className="font-semibold">
-                  {session.answers[field.field]}
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
+      )}
       <div>
         <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
           Generated Document

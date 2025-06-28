@@ -16,30 +16,40 @@ interface MissingFieldsWizardProps {
   loading?: boolean;
 }
 
-// Placeholder/mock for development
-const mockFields: Field[] = [
-  {
-    field: "disclosing_party_name",
-    explanation:
-      "Full legal name of the party disclosing confidential information.",
-    example: "Alpha Innovations Ltd.",
-  },
-  {
-    field: "receiving_party_name",
-    explanation:
-      "Full legal name of the party receiving confidential information.",
-    example: "Beta Solutions Ltd.",
-  },
-];
-
 export default function MissingFieldsWizard({
-  fields = mockFields,
+  fields = [],
   onSubmit,
   loading = false,
 }: MissingFieldsWizardProps) {
   const total = fields.length;
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+
+  // If no fields, show completion message
+  if (total === 0) {
+    return (
+      <div className="fixed inset-0 z-30 bg-white bg-opacity-80 flex items-center justify-center min-h-screen p-3">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 relative border border-gray-100">
+          <div className="text-center">
+            <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              All Information Provided
+            </h3>
+            <p className="text-gray-600 mb-6">
+              We have all the information needed to generate your document.
+            </p>
+            <button
+              onClick={() => onSubmit && onSubmit({})}
+              disabled={loading}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50"
+            >
+              {loading ? "Processing..." : "Continue"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const current = fields[step];
   const isLast = step === total - 1;

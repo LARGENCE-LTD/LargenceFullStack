@@ -4,15 +4,25 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Notebook, User, Settings, LogOut } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+
 import { Modal } from "@/app/componets/Modal";
+import { Avatar, AvatarFallback, AvatarImage } from "@/app/componets/ui/Avatar";
 import DashboardPage from "@/app/dashboard/page";
+import { useUser } from "@/contexts/user/context";
 
 interface HeaderProps {
   onOpenHistory: () => void;
+  onCloseHistory: () => void;
+  isHistoryOpen: boolean;
 }
 
-export default function Header({ onOpenHistory }: HeaderProps) {
+export default function Header({
+  onOpenHistory,
+  onCloseHistory,
+  isHistoryOpen,
+}: HeaderProps) {
   const router = useRouter();
+  const { state, actions } = useUser();
   const [openDropdown, setOpenDropdown] = useState(false);
   const [modal, setModal] = useState<true | false>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -34,27 +44,52 @@ export default function Header({ onOpenHistory }: HeaderProps) {
     }
   }, [openDropdown]);
 
-  // Sign out logic placeholder
-  const handleSignOut = () => {
-    // Sign out logic here (clear token, call API, etc)
-    router.push("/login");
+  // Sign out logic using user context
+  const handleSignOut = async () => {
+    try {
+      await actions.logout();
+      router.push("/");
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Fallback redirect
+      router.push("/");
+    }
+  };
+
+  // Get user initials for avatar fallback
+  const getUserInitials = () => {
+    if (state.profile?.firstName && state.profile?.lastName) {
+      return `${state.profile.firstName[0]}${state.profile.lastName[0]}`.toUpperCase();
+    }
+    if (state.profile?.firstName) {
+      return state.profile.firstName[0].toUpperCase();
+    }
+    return "U";
+  };
+
+  // Handle history button click - toggle sidebar
+  const handleHistoryClick = () => {
+    if (isHistoryOpen) {
+      onCloseHistory();
+    } else {
+      onOpenHistory();
+    }
   };
 
   return (
     <>
-      <header className="fixed top-0 left-0 w-full z-30 flex items-start justify-between pointer-events-none px-4 pt-3 h-16">
+      <header className="w-full py-4 px-6 md:pl-12 md:pr-12 flex items-center justify-between">
         {/* Logo at left */}
         <div className="flex items-center pointer-events-auto">
           <button
-            onClick={() => router.push("/")}
             className="flex items-center focus:outline-none"
             aria-label="Go to home"
           >
             <Image
               src="/logo.png"
               alt="Largence Logo"
-              width={44}
-              height={48}
+              width={49}
+              height={59}
               className="rounded-lg"
               priority
             />
@@ -65,33 +100,48 @@ export default function Header({ onOpenHistory }: HeaderProps) {
         <div className="flex items-center space-x-2 pointer-events-auto">
           {/* History Button */}
           <button
-            className="flex items-center gap-1 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-700"
-            onClick={onOpenHistory}
-            aria-label="Open history sidebar"
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-gray-700 ${
+              isHistoryOpen
+                ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                : "hover:bg-gray-100"
+            }`}
+            onClick={handleHistoryClick}
+            aria-label={
+              isHistoryOpen ? "Close history sidebar" : "Open history sidebar"
+            }
           >
             <Notebook size={20} />
-            <span className="sr-only">History</span>
+            <span className="text-sm font-semibold cursor-pointer">
+              History
+            </span>
           </button>
 
           {/* User Avatar Dropdown */}
           <div className="relative" ref={dropdownRef}>
             <button
-              className="w-10 h-10 rounded-full overflow-hidden border border-gray-200 hover:ring-2 hover:ring-blue-400 transition-all"
+              className="w-10 h-10 rounded-full overflow-hidden border border-gray-200 hover:ring-2 hover:ring-blue-400 transition-all cursor-pointer"
               onClick={() => setOpenDropdown((v) => !v)}
               aria-label="User menu"
             >
-              <Image
-                src="/diverse-group.png"
-                alt="User Avatar"
-                width={40}
-                height={40}
-                className="object-cover"
-              />
+              <Avatar className="w-10 h-10">
+                <AvatarImage src="/diverse-group.png" alt="User Avatar" />
+                <AvatarFallback className="bg-blue-600 text-white">
+                  {getUserInitials()}
+                </AvatarFallback>
+              </Avatar>
             </button>
 
             {/* Dropdown */}
             {openDropdown && (
               <div className="absolute right-0 mt-2 w-44 bg-white shadow-lg rounded-xl border border-gray-100 py-2 z-50 animate-fade-in">
+                <div className="px-4 py-2 border-b border-gray-100">
+                  <p className="text-sm font-medium text-gray-900">
+                    {state.profile?.firstName} {state.profile?.lastName}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {state.profile?.email}
+                  </p>
+                </div>
                 <button
                   className="w-full flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50"
                   onClick={() => {

@@ -17,9 +17,13 @@ export default function AppShell() {
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50 relative">
       {/* Header stays at the very top, overlayed */}
-      <Header onOpenHistory={handleOpenHistory} />
+      <Header
+        onOpenHistory={handleOpenHistory}
+        onCloseHistory={handleCloseHistory}
+        isHistoryOpen={historyOpen}
+      />
 
-      {/* Main document workspace area */}
+      {/* Main document workspace area - adjusted for left sidebar */}
       <main className="flex-1 flex flex-col items-center justify-center px-2 pb-2">
         <DocumentWorkspace />
       </main>
@@ -27,7 +31,7 @@ export default function AppShell() {
       {/* Tiny, unobtrusive footer */}
       <Footer />
 
-      {/* Slide-out history sidebar (overlays workspace, not part of main flex) */}
+      {/* Slide-out history sidebar (overlays workspace, positioned on left) */}
       <Sidebar isOpen={historyOpen} onClose={handleCloseHistory} />
     </div>
   );

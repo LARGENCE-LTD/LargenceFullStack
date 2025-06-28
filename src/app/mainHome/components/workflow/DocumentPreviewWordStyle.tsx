@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Download,
   FileText,
@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   Sparkles,
 } from "lucide-react";
+import { useDocument } from "@/contexts/document/context";
 
 interface DocumentPreviewWordStyleProps {
   document?: {
@@ -26,22 +27,8 @@ interface DocumentPreviewWordStyleProps {
   dataPrivacyModal?: React.ReactNode;
 }
 
-const mockDoc = {
-  id: "doc1",
-  title: "Non-Disclosure Agreement",
-  content: `This Non-Disclosure Agreement (the "Agreement") is made and entered into as of [Effective Date] by and between Alpha Innovations Ltd. ("Disclosing Party") and Beta Solutions Ltd. ("Receiving Party").
-  
-1. **Definition of Confidential Information**
-All information disclosed by Disclosing Party to Receiving Party shall be considered confidential...
-  
-2. **Obligations**
-Receiving Party agrees not to disclose any confidential information to third parties...
-  
-[...more clauses go here...]`,
-};
-
 export default function DocumentPreviewWordStyle({
-  document = mockDoc,
+  document,
   loading = false,
   streamingContent,
   onEdit,
@@ -50,29 +37,52 @@ export default function DocumentPreviewWordStyle({
   onAIEnhance,
   dataPrivacyModal,
 }: DocumentPreviewWordStyleProps) {
+  const { state, actions } = useDocument();
   const [isEditing, setIsEditing] = useState(false);
-  const [editedContent, setEditedContent] = useState(document.content);
+  const [editedContent, setEditedContent] = useState(document?.content || "");
 
-  // When switching to new doc, reset edit buffer
-  // (In real app, handle doc changes via effect)
-  // useEffect(() => setEditedContent(document.content), [document.id]);
+  // Update edited content when document changes
+  useEffect(() => {
+    if (document?.content) {
+      setEditedContent(document.content);
+    }
+  }, [document?.content]);
 
   // Handle edit/save/cancel
   const startEdit = () => {
     setIsEditing(true);
-    setEditedContent(document.content);
+    setEditedContent(document?.content || "");
   };
+
   const handleSave = async () => {
-    if (onEdit) await onEdit(editedContent);
-    setIsEditing(false);
+    if (onEdit) {
+      try {
+        await onEdit(editedContent);
+        setIsEditing(false);
+      } catch (error) {
+        console.error("Failed to save document:", error);
+        // Could show error message to user
+      }
+    } else {
+      setIsEditing(false);
+    }
   };
+
   const handleCancel = () => {
-    setEditedContent(document.content);
+    setEditedContent(document?.content || "");
     setIsEditing(false);
   };
 
   // "Live printing": use streamingContent if present
-  const showContent = streamingContent || editedContent || document.content;
+  const showContent =
+    streamingContent || editedContent || document?.content || "";
+
+  // Show error if there's one
+  const showError = state.error && (
+    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+      <p className="text-red-700 text-sm">{state.error}</p>
+    </div>
+  );
 
   return (
     <div className="w-full flex flex-col items-center justify-center min-h-[75vh]">
@@ -87,11 +97,13 @@ export default function DocumentPreviewWordStyle({
         </button>
       )}
 
+      {showError}
+
       {/* Toolbar */}
       <div className="flex items-center justify-between w-full max-w-3xl mx-auto mt-8 mb-3 px-2">
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-semibold text-gray-800">
-            {document.title || "Document"}
+            {document?.title || "Document"}
           </h2>
         </div>
         <div className="flex items-center gap-3">

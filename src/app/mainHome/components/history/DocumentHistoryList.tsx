@@ -8,6 +8,10 @@ type DocumentSummary = {
   title: string;
   createdAt: string;
   status: "completed" | "draft" | "error";
+  prompt: string;
+  missingFields: { field: string; explanation: string; example: string }[];
+  answers: { [field: string]: string };
+  content: string;
 };
 
 interface DocumentHistoryListProps {
@@ -22,7 +26,7 @@ export default function DocumentHistoryList({
   return (
     <ul className="divide-y divide-gray-100">
       {documents.length === 0 && (
-        <li className="p-6 text-center text-gray-400 text-sm">
+        <li className="p-6 text-center text-gray-500 text-base mt-30">
           No documents yet.
         </li>
       )}
@@ -32,7 +36,10 @@ export default function DocumentHistoryList({
             className="w-full flex items-start gap-3 px-4 py-4 hover:bg-gray-50 transition group"
             onClick={() => onSelect(doc.id)}
           >
-            <FileText size={20} className="flex-shrink-0 mt-1 text-blue-500" />
+            <FileText
+              size={20}
+              className="flex-shrink-0 mt-1 text-blue-500"
+            />
             <div className="flex-1 text-left">
               <div className="font-medium text-gray-900">{doc.title}</div>
               <div className="text-xs text-gray-500">
