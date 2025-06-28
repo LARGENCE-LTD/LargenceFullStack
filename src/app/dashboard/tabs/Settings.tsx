@@ -1,4 +1,4 @@
-import { Button } from "@/app/componets/Button";
+import { Button } from "@/app/components/Button";
 import { Shield, Bell, Globe } from "lucide-react";
 
 export default function SettingsTab() {

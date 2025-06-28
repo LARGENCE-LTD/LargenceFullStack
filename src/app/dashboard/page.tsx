@@ -9,8 +9,8 @@ import {
   useUserUsage,
   useUserActivities,
 } from "@/contexts/user/context";
-import { Button } from "@/app/componets/Button";
-import { Loading } from "@/app/componets/Loading";
+import { Button } from "@/app/components/Button";
+import { Loading } from "@/app/components/Loading";
 
 import OverviewTab from "./tabs/Overview";
 import DocumentsTab from "./tabs/Documents";
@@ -71,9 +71,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <>
+    <div className="flex flex-col h-full min-h-0 max-h-[95vh]">
       {/* Navigation Tabs */}
-      <nav>
+      <nav className="flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-center space-x-8">
             {[
@@ -103,19 +103,21 @@ export default function DashboardPage() {
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        {activeTab === "overview" && (
-          <OverviewTab
-            profile={profile}
-            subscription={subscription}
-            usage={usage}
-          />
-        )}
-        {activeTab === "documents" && <DocumentsTab />}
-        {activeTab === "settings" && <SettingsTab />}
-        {activeTab === "activity" && <ActivityTab activities={activities} />}
-      </main>
-    </>
+      <div className="flex-1 min-h-0">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 h-full">
+          {activeTab === "overview" && (
+            <OverviewTab
+              profile={profile}
+              subscription={subscription}
+              usage={usage}
+            />
+          )}
+          {activeTab === "documents" && <DocumentsTab />}
+          {activeTab === "settings" && <SettingsTab />}
+          {activeTab === "activity" && <ActivityTab activities={activities} />}
+        </main>
+      </div>
+    </div>
   );
 }
 

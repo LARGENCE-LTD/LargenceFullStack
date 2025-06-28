@@ -1,4 +1,4 @@
-import { Button } from "@/app/componets/Button";
+import { Button } from "@/app/components/Button";
 import { FileText, TrendingUp, HardDrive, Calendar } from "lucide-react";
 
 export default function OverviewTab({ profile, subscription, usage }: any) {
