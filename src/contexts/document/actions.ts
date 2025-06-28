@@ -156,6 +156,16 @@ export function useDocumentActions(state: State, dispatch: Dispatch<DocumentActi
   // Clear errors
   const clearError = () => dispatch({ type: DOCUMENT_ACTION_TYPES.CLEAR_ERROR });
 
+  // Load document from history
+  const loadDocumentFromHistory = (documentId: string) => {
+    const document = state.documentHistory.find(doc => doc.id === documentId);
+    if (document) {
+      dispatch({ type: DOCUMENT_ACTION_TYPES.LOAD_DOCUMENT_FROM_HISTORY, payload: document });
+    } else {
+      dispatch({ type: DOCUMENT_ACTION_TYPES.SET_ERROR, payload: "Document not found in history" });
+    }
+  };
+
   // Expose all actions to the provider
   return {
     startSession,
@@ -166,5 +176,6 @@ export function useDocumentActions(state: State, dispatch: Dispatch<DocumentActi
     loadPersistedState,
     resetSession,
     clearError,
+    loadDocumentFromHistory,
   };
 }

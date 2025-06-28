@@ -88,6 +88,24 @@ export function reducer(state: State, action: DocumentAction): State {
     case DOCUMENT_ACTION_TYPES.SET_CONVERSATION_HISTORY:
       return { ...state, conversationHistory: action.payload };
 
+    case DOCUMENT_ACTION_TYPES.LOAD_DOCUMENT_FROM_HISTORY:
+      return {
+        ...state,
+        sessionId: action.payload.id,
+        sessionStatus: 'completed',
+        originalPrompt: '', // Could be loaded from conversation history if available
+        documentType: action.payload.documentType,
+        suggestedTitle: action.payload.title,
+        missingData: { fields: [], message: '' },
+        providedData: [],
+        streamingContent: '',
+        documentContent: action.payload.content,
+        isStreaming: false,
+        progress: { current: 100, total: 100 },
+        loading: false,
+        error: null
+      };
+
     case DOCUMENT_ACTION_TYPES.SET_USER_CONSENT:
       return { ...state, userConsentGiven: action.payload };
 

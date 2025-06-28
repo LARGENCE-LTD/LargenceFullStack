@@ -142,9 +142,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [state.isAuthenticated]);
 
-  // Session expiry check
+  // Session expiry check (only run when not using test data)
   useEffect(() => {
-    if (!state.isAuthenticated || !state.token) return;
+    // Skip session validation when using test data to prevent API calls to non-existent endpoints
+    if (!state.isAuthenticated || !state.token || USE_TEST_DATA) return;
 
     const checkSession = async () => {
       const isValid = await actions.validateSession();

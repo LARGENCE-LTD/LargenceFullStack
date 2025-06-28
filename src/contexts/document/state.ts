@@ -98,6 +98,7 @@ export interface MissingField {
     | { type: typeof DOCUMENT_ACTION_TYPES.SET_DOCUMENT_HISTORY; payload: DocumentHistoryEntry[] }
     | { type: typeof DOCUMENT_ACTION_TYPES.ADD_TO_CONVERSATION_HISTORY; payload: ConversationHistoryEntry }
     | { type: typeof DOCUMENT_ACTION_TYPES.SET_CONVERSATION_HISTORY; payload: ConversationHistoryEntry[] }
+    | { type: typeof DOCUMENT_ACTION_TYPES.LOAD_DOCUMENT_FROM_HISTORY; payload: DocumentHistoryEntry }
     | { type: typeof DOCUMENT_ACTION_TYPES.SET_USER_CONSENT; payload: boolean }
     | { type: typeof DOCUMENT_ACTION_TYPES.RESET_SESSION };
   

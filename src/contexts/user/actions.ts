@@ -295,6 +295,11 @@ export function useUserActions(
   const validateSession = async () => {
     if (!state.token) return false;
 
+    // If using test data, always return true
+    if (process.env.NODE_ENV === 'development' && state.token === 'test-token-123') {
+      return true;
+    }
+
     try {
       const isValid = await UserAPI.validateToken(state.token);
       if (!isValid) {
