@@ -7,26 +7,21 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 
-import { Button } from "../componets/Button";
-import { Modal } from "../componets/Modal";
+import { Button } from "../components/Button";
+import { Modal } from "../components/Modal";
 
-import SignupForm from "../componets/authForm/SignupForm";
-import LoginForm from "../componets/authForm/LoginForm";
+import SignupForm from "../components/authForm/SignupForm";
+import LoginForm from "../components/authForm/LoginForm";
 
 import { useDocumentQuery } from "@/contexts/promptContext";
 
-// Interface for component props
-interface LandingPageProps {
-  initialModal?: "login" | "signup" | null;
-}
-
 // Main LandingPage component
-export default function LandingPage({ initialModal = null }: LandingPageProps) {
+export default function LandingPage() {
   const router = useRouter();
   const { storeDocumentQuery } = useDocumentQuery();
 
   // State for modal and user input
-  const [modal, setModal] = useState<"login" | "signup" | null>(initialModal);
+  const [modal, setModal] = useState<"login" | "signup" | null>(null);
   const [userInput, setUserInput] = useState<string>("");
 
   // Handle input submission for document query
@@ -102,17 +97,17 @@ export default function LandingPage({ initialModal = null }: LandingPageProps) {
             <br />
             Instantly
           </h1>
-          <p className="text-lg md:text-xl text-gray-600 mb-8 leading-relaxed">
+          <p className="text-lg md:text-xl text-gray-700 mb-8 leading-relaxed">
             Describe your needs or the scenario for your agreement
             <br />
             in a few words or sentences.
           </p>
-          <p className="text-sm md:text-base text-gray-400 mb-2">
+          <p className="text-sm md:text-base text-gray-500 mb-2">
             AI-powered legal documents, tailored for your business and personal
             needs in minutes.
           </p>
 
-          <div className="relative w-full max-w-xl mx-auto">
+          <div className="relative w-full max-w-xl mx-auto mt-10 mb-60">
             <textarea
               className="w-full h-60 p-4 border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-lg placeholder-gray-400 shadow-sm"
               placeholder="I need a contract for a new client project..."
@@ -132,7 +127,7 @@ export default function LandingPage({ initialModal = null }: LandingPageProps) {
               <ArrowRight className="h-6 w-6" />
             </Button>
           </div>
-          <p className="text-xs text-gray-400 mt-2">
+          <p className="text-xs text-gray-500 mt-2">
             Your input is private and encrypted. Only you can access your
             documents.
           </p>
@@ -155,7 +150,6 @@ export default function LandingPage({ initialModal = null }: LandingPageProps) {
           open={modal === "login"}
           onClose={() => {
             setModal(null);
-            if (initialModal) router.push("/");
           }}
         >
           <LoginForm onSwitch={() => setModal("signup")} />
@@ -166,7 +160,6 @@ export default function LandingPage({ initialModal = null }: LandingPageProps) {
           open={modal === "signup"}
           onClose={() => {
             setModal(null);
-            if (initialModal) router.push("/");
           }}
         >
           <SignupForm onSwitch={() => setModal("login")} />
