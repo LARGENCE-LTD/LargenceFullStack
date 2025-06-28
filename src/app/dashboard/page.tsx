@@ -17,14 +17,7 @@ import DocumentsTab from "./tabs/Documents";
 import SettingsTab from "./tabs/Settings";
 import ActivityTab from "./tabs/Activity";
 
-import {
-  User,
-  FileText,
-  Settings,
-  LogOut,
-  Activity,
-  TrendingUp,
-} from "lucide-react";
+import { FileText, Settings, Activity, TrendingUp } from "lucide-react";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -94,13 +87,13 @@ export default function DashboardPage() {
                 <Button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm ${
+                  className={`flex items-center gap-2 py-4 px-1 border-b-2 font-semibold text-lg cursor-pointer ${
                     activeTab === tab.id
                       ? "border-red-500 text-red-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-400"
                   }`}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-5 w-5" />
                   {tab.label}
                 </Button>
               );
@@ -125,18 +118,5 @@ export default function DashboardPage() {
     </>
   );
 }
-
-// {/* Modal for Dashboard */}
-// <Modal
-//   open={modal === "signup"}
-//   onClose={() => {
-//     setModal(null);
-//     if (initialModal) router.push("/");
-//   }}
-//   contentClassName="h-[650px] w-[950px] max-w-full max-h-[95vh] p-0"
-//   content_bg="bg-gray-50"
-// >
-//   <DashboardPage />
-// </Modal>
 
 // TODO: configure /dashboard route to pop dashboard if authenticated else redirect to /login

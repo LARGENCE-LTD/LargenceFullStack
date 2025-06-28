@@ -9,8 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@radix-ui/react-avatar": "^1.1.10",
     "axios": "^1.10.0",
     "bcryptjs": "^3.0.2",
+    "clsx": "^2.1.1",
     "http-status-codes": "^2.3.0",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.523.0",
@@ -18,7 +20,8 @@
     "next": "15.3.4",
     "nodemailer": "^7.0.3",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
