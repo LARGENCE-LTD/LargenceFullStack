@@ -1,4 +1,3 @@
-// pages/index.tsx (Next.js Pages Router)
 "use client";
 
 import { useEffect } from "react";
