@@ -1,0 +1,154 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
+
+.simple-editor-wrapper {
+  --tt-toolbar-height: 50px;
+  --tt-theme-text: var(--tt-gray-light-900);
+
+  &.theme-dark {
+    --tt-theme-text: var(--tt-gray-dark-900);
+  }
+
+  font-family: "Inter", sans-serif;
+  color: var(--tt-theme-text);
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+  padding: 0;
+  height: 100%;
+  min-height: 500px;
+  background-color: var(--tt-bg-color);
+
+  .tiptap.ProseMirror {
+    font-family: "DM Sans", sans-serif;
+  }
+
+  .content-wrapper {
+    height: calc(100% - var(--tt-toolbar-height));
+    overflow-y: auto;
+
+    &::-webkit-scrollbar {
+      display: block;
+      width: 0.5rem;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background-color: var(--tt-scrollbar-color);
+      border-radius: 4px;
+    }
+
+    /* Firefox scrollbar */
+    scrollbar-width: thin;
+    scrollbar-color: var(--tt-scrollbar-color) transparent;
+  }
+
+  .simple-editor-content {
+    max-width: 1000px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .simple-editor-content .tiptap.ProseMirror {
+    padding: 2rem 2rem;
+  }
+
+  @media screen and (max-width: 480px) {
+    .simple-editor-content .tiptap.ProseMirror {
+      padding: 1rem 1rem;
+    }
+  }
+
+  &.theme-light {
+    --background: #ffffff;
+    --foreground: #171717;
+
+    background: var(--background);
+    color: var(--foreground);
+  }
+
+  &.theme-dark {
+    --background: #0e0e11;
+    --foreground: #f5f5f5;
+
+    background: var(--background);
+    color: var(--foreground);
+  }
+
+  .ProseMirror {
+    background: var(--background);
+    color: var(--foreground);
+  }
+
+  .tiptap-toolbar {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+
+  // Scoped toolbar and button styles for theme switching
+  &.theme-dark {
+    .tiptap-toolbar {
+      background-color: var(--background);
+      color: var(--foreground);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .tiptap-button {
+      color: var(--foreground);
+      background-color: transparent;
+    }
+
+    .tiptap-button:hover,
+    .tiptap-button:focus,
+    .tiptap-button[data-active-item="true"]:not([disabled]) {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .tiptap-button[data-active-state="on"]:not([disabled]),
+    .tiptap-button[data-state="open"]:not([disabled]) {
+      background-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .tiptap-button .tiptap-button-icon {
+      color: var(--foreground);
+    }
+
+    .tiptap-separator {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+  }
+
+  &.theme-light {
+    .tiptap-toolbar {
+      background-color: var(--background);
+      color: var(--foreground);
+      border-color: rgba(0, 0, 0, 0.1);
+    }
+
+    .tiptap-button {
+      color: var(--foreground);
+      background-color: transparent;
+    }
+
+    .tiptap-button:hover,
+    .tiptap-button:focus,
+    .tiptap-button[data-active-item="true"]:not([disabled]) {
+      background-color: rgba(0, 0, 0, 0.1);
+    }
+
+    .tiptap-button[data-active-state="on"]:not([disabled]),
+    .tiptap-button[data-state="open"]:not([disabled]) {
+      background-color: rgba(0, 0, 0, 0.15);
+    }
+
+    .tiptap-button .tiptap-button-icon {
+      color: var(--foreground);
+    }
+
+    .tiptap-separator {
+      background-color: rgba(0, 0, 0, 0.1);
+    }
+  }
+}
