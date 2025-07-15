@@ -16,13 +16,19 @@ import LoginForm from "../components/authForm/LoginForm";
 import { useDocumentQuery } from "@/contexts/promptContext";
 
 // Main LandingPage component
-export default function LandingPage() {
+export default function LandingPage({
+  initialModal,
+}: {
+  initialModal?: "login" | "signup";
+}) {
   const router = useRouter();
   const { storeDocumentQuery } = useDocumentQuery();
 
   // State for modal and user input
-  const [modal, setModal] = useState<"login" | "signup" | null>(null);
-  const [userInput, setUserInput] = useState<string>("");
+  const [modal, setModal] = useState<"login" | "signup" | null>(
+    initialModal || null
+  );
+  const [userInput, setUserInput] = useState<string>(initialModal ? "" : "");
 
   // Handle input submission for document query
   const handleInputSubmit = () => {

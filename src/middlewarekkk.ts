@@ -13,7 +13,7 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get("token")?.value || "";
 
   if (token && isPublicPath) {
-    return NextResponse.redirect(new URL("/mainHome", request.nextUrl));
+    return NextResponse.redirect(new URL("/home", request.nextUrl));
   }
 
   if (!token && !isPublicPath) {
@@ -24,5 +24,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/login", "/signup", "/dashboard", "/mainHome", "/landing"],
+  matcher: ["/", "/login", "/signup", "/dashboard", "/home", "/landing"],
 };

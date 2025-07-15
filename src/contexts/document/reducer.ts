@@ -16,7 +16,6 @@ export function reducer(state: State, action: DocumentAction): State {
       return {
         ...state,
         sessionId: action.payload.sessionId,
-        sessionStatus: 'starting',
         originalPrompt: '',
         documentType: null,
         suggestedTitle: '',
@@ -77,27 +76,21 @@ export function reducer(state: State, action: DocumentAction): State {
       return { ...state, progress: action.payload };
 
     case DOCUMENT_ACTION_TYPES.ADD_TO_DOCUMENT_HISTORY:
-      return { ...state, documentHistory: [action.payload, ...state.documentHistory] };
+      return { ...state, documentSessions: [action.payload, ...state.documentSessions] };
 
     case DOCUMENT_ACTION_TYPES.SET_DOCUMENT_HISTORY:
-      return { ...state, documentHistory: action.payload };
-
-    case DOCUMENT_ACTION_TYPES.ADD_TO_CONVERSATION_HISTORY:
-      return { ...state, conversationHistory: [action.payload, ...state.conversationHistory] };
-
-    case DOCUMENT_ACTION_TYPES.SET_CONVERSATION_HISTORY:
-      return { ...state, conversationHistory: action.payload };
+      return { ...state, documentSessions: action.payload };
 
     case DOCUMENT_ACTION_TYPES.LOAD_DOCUMENT_FROM_HISTORY:
       return {
         ...state,
-        sessionId: action.payload.id,
+        sessionId: action.payload.sessionId || action.payload.id,
         sessionStatus: 'completed',
-        originalPrompt: '', // Could be loaded from conversation history if available
+        originalPrompt: action.payload.originalPrompt,
         documentType: action.payload.documentType,
         suggestedTitle: action.payload.title,
-        missingData: { fields: [], message: '' },
-        providedData: [],
+        missingData: action.payload.missingData || { fields: [], message: '' },
+        providedData: action.payload.providedData,
         streamingContent: '',
         documentContent: action.payload.content,
         isStreaming: false,
@@ -110,7 +103,7 @@ export function reducer(state: State, action: DocumentAction): State {
       return { ...state, userConsentGiven: action.payload };
 
     case DOCUMENT_ACTION_TYPES.RESET_SESSION:
-      // documentHistory/conversationHistory/userConsentGiven persist
+      // documentSessions/userConsentGiven persist
       return {
         sessionId: null,
         sessionStatus: 'idle',
@@ -125,8 +118,7 @@ export function reducer(state: State, action: DocumentAction): State {
         documentContent: '',
         isStreaming: false,
         progress: { current: 0, total: 0 },
-        documentHistory: state.documentHistory,
-        conversationHistory: state.conversationHistory,
+        documentSessions: state.documentSessions,
         userConsentGiven: state.userConsentGiven
       };
 

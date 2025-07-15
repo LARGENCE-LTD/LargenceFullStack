@@ -67,19 +67,49 @@ const testUserData = {
       id: "act-1",
       type: "login" as const,
       description: "User logged in successfully",
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(Date.now() - 300000).toISOString(), // 5 minutes ago
     },
     {
       id: "act-2",
       type: "document_created" as const,
-      description: "Created NDA for TechCorp Inc.",
-      timestamp: new Date(Date.now() - 3600000).toISOString(),
+      description: "Created Non-Disclosure Agreement for TechCorp Inc.",
+      timestamp: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
     },
     {
       id: "act-3",
       type: "document_exported" as const,
       description: "Exported Employment Contract as PDF",
-      timestamp: new Date(Date.now() - 7200000).toISOString(),
+      timestamp: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
+    },
+    {
+      id: "act-4",
+      type: "document_created" as const,
+      description: "Created Service Agreement for Digital Marketing Pro LLC",
+      timestamp: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+    },
+    {
+      id: "act-5",
+      type: "document_created" as const,
+      description: "Created Consulting Agreement - Business Strategy",
+      timestamp: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
+    },
+    {
+      id: "act-6",
+      type: "document_created" as const,
+      description: "Created Terms of Service for TechCorp Platform",
+      timestamp: new Date(Date.now() - 259200000).toISOString(), // 3 days ago
+    },
+    {
+      id: "act-7",
+      type: "profile_updated" as const,
+      description: "Updated user profile information",
+      timestamp: new Date(Date.now() - 345600000).toISOString(), // 4 days ago
+    },
+    {
+      id: "act-8",
+      type: "subscription_changed" as const,
+      description: "Upgraded to Pro Plan subscription",
+      timestamp: new Date(Date.now() - 432000000).toISOString(), // 5 days ago
     },
   ],
 };
@@ -120,27 +150,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       actions.initializeFromStorage();
     }
   }, []);
-
-  // Set up activity tracking
-  useEffect(() => {
-    const updateActivity = () => {
-      if (state.isAuthenticated) {
-        actions.addActivity('login', 'User activity detected');
-      }
-    };
-
-    // Update activity on user interaction
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-    events.forEach(event => {
-      document.addEventListener(event, updateActivity, { passive: true });
-    });
-
-    return () => {
-      events.forEach(event => {
-        document.removeEventListener(event, updateActivity);
-      });
-    };
-  }, [state.isAuthenticated]);
 
   // Session expiry check (only run when not using test data)
   useEffect(() => {

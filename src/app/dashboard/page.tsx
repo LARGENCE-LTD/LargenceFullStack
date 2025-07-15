@@ -122,3 +122,4 @@ export default function DashboardPage() {
 }
 
 // TODO: configure /dashboard route to pop dashboard if authenticated else redirect to /login
+// Instead of setting a fixed w & h centralize and use paddings

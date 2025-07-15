@@ -1,4 +1,4 @@
-import { DOCUMENT_ACTION_TYPES, SESSION_STATUS } from './constants';
+import { DOCUMENT_ACTION_TYPES, SESSION_STATUS, type SessionStatus, type DocumentType } from './constants';
 
 // Single missing field required by backend
 export interface MissingField {
@@ -22,7 +22,27 @@ export interface MissingField {
   // Final generated document content (single document)
   export type DocumentContent = string;
   
-  // Document history entry
+  // Complete document session entry - consolidates document and conversation history
+  export interface DocumentSession {
+    // Core document info
+    id:           string;
+    title:        string;
+    documentType: DocumentType;
+    content:      string;
+    createdAt:    string;
+    
+    // Session context and conversation
+    originalPrompt: string;
+    missingData?:   MissingData;
+    providedData:   ProvidedField[];
+    
+    // Metadata
+    sessionId?:     string | null;
+    status:         'completed' | 'draft' | 'error';
+    lastModified?:  string;
+  }
+  
+  // Legacy interfaces for backward compatibility (can be removed later)
   export interface DocumentHistoryEntry {
     id:           string;
     title:        string;
@@ -31,7 +51,6 @@ export interface MissingField {
     createdAt:    string;
   }
   
-  // Conversation history entry
   export interface ConversationHistoryEntry {
     prompt:         string;
     missingData?:   MissingData;
@@ -44,13 +63,13 @@ export interface MissingField {
   export interface State {
     // Session
     sessionId:      string | null;
-    sessionStatus:  typeof SESSION_STATUS[keyof typeof SESSION_STATUS];
+    sessionStatus:  SessionStatus;
     loading:        boolean;
     error:          string | null;
   
     // User input and doc setup
     originalPrompt: string;
-    documentType:   string | null;
+    documentType:   DocumentType | null;
     suggestedTitle: string;
   
     // Missing fields flow
@@ -63,9 +82,8 @@ export interface MissingField {
     isStreaming:      boolean;
     progress:         { current: number; total: number };
   
-    // History
-    documentHistory:      DocumentHistoryEntry[];
-    conversationHistory:  ConversationHistoryEntry[];
+    // History - consolidated into single DocumentSession array
+    documentSessions: DocumentSession[];
   
     // Privacy
     userConsentGiven: boolean;
@@ -80,9 +98,9 @@ export interface MissingField {
     | { type: typeof DOCUMENT_ACTION_TYPES.SET_ERROR; payload: string }
     | { type: typeof DOCUMENT_ACTION_TYPES.CLEAR_ERROR }
     | { type: typeof DOCUMENT_ACTION_TYPES.START_SESSION; payload: { sessionId: string } }
-    | { type: typeof DOCUMENT_ACTION_TYPES.SET_SESSION_STATUS; payload: State['sessionStatus'] }
+    | { type: typeof DOCUMENT_ACTION_TYPES.SET_SESSION_STATUS; payload: SessionStatus }
     | { type: typeof DOCUMENT_ACTION_TYPES.SET_ORIGINAL_PROMPT; payload: string }
-    | { type: typeof DOCUMENT_ACTION_TYPES.SET_DOCUMENT_TYPE; payload: string }
+    | { type: typeof DOCUMENT_ACTION_TYPES.SET_DOCUMENT_TYPE; payload: DocumentType }
     | { type: typeof DOCUMENT_ACTION_TYPES.SET_SUGGESTED_TITLE; payload: string }
     | { type: typeof DOCUMENT_ACTION_TYPES.SET_MISSING_DATA; payload: MissingData }
     | { type: typeof DOCUMENT_ACTION_TYPES.CLEAR_MISSING_DATA }
@@ -94,11 +112,9 @@ export interface MissingField {
     | { type: typeof DOCUMENT_ACTION_TYPES.SET_DOCUMENT_CONTENT; payload: string }
     | { type: typeof DOCUMENT_ACTION_TYPES.CLEAR_DOCUMENT_CONTENT }
     | { type: typeof DOCUMENT_ACTION_TYPES.UPDATE_PROGRESS; payload: { current: number; total: number } }
-    | { type: typeof DOCUMENT_ACTION_TYPES.ADD_TO_DOCUMENT_HISTORY; payload: DocumentHistoryEntry }
-    | { type: typeof DOCUMENT_ACTION_TYPES.SET_DOCUMENT_HISTORY; payload: DocumentHistoryEntry[] }
-    | { type: typeof DOCUMENT_ACTION_TYPES.ADD_TO_CONVERSATION_HISTORY; payload: ConversationHistoryEntry }
-    | { type: typeof DOCUMENT_ACTION_TYPES.SET_CONVERSATION_HISTORY; payload: ConversationHistoryEntry[] }
-    | { type: typeof DOCUMENT_ACTION_TYPES.LOAD_DOCUMENT_FROM_HISTORY; payload: DocumentHistoryEntry }
+    | { type: typeof DOCUMENT_ACTION_TYPES.ADD_TO_DOCUMENT_HISTORY; payload: DocumentSession }
+    | { type: typeof DOCUMENT_ACTION_TYPES.SET_DOCUMENT_HISTORY; payload: DocumentSession[] }
+    | { type: typeof DOCUMENT_ACTION_TYPES.LOAD_DOCUMENT_FROM_HISTORY; payload: DocumentSession }
     | { type: typeof DOCUMENT_ACTION_TYPES.SET_USER_CONSENT; payload: boolean }
     | { type: typeof DOCUMENT_ACTION_TYPES.RESET_SESSION };
   
@@ -129,8 +145,7 @@ export interface MissingField {
     progress:         { current: 0, total: 0 },
   
     // History
-    documentHistory:     [],
-    conversationHistory: [],
+    documentSessions: [],
   
     // Privacy
     userConsentGiven: false
