@@ -1,4 +1,6 @@
-# Largence - Full Stack Document Editor
+![Largence Logo](public/logo.png)
+
+# LARGENCE - Legal Document Generator
 
 A modern, full-stack document editing application built with Next.js, TypeScript, and MongoDB, featuring a rich text editor.
 
