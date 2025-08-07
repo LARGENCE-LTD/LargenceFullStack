@@ -1,52 +1,60 @@
 import { ProvidedField } from "@/contexts/document/state";
 import { API_BASE_URL } from "./constants";
 
-// WebSocket message types for type safety
+// WebSocket message types matching the new server contract
 export interface WebSocketMessage {
-  type?: string;
-  connected?: boolean;
-  id?: string;
-  document_request?: boolean;
-  messages?: string[];
-  status?: string;
-  message?: string;
-  missing_info_request?: boolean;
-  fields?: Array<{
-    field: string;
-    explanation: string;
-    example: string;
+  type: 'session_resumed' | 'next_question' | 'session_complete' | 'error' | 'warning' | 'guardrail_reprompt' | 'guardrail_exit';
+  sessionId?: string;
+  history?: Array<{
+    role: 'user' | 'ai';
+    content: string;
+    timestamp?: string;
   }>;
-  missing_info_response?: boolean;
-  user_declined?: boolean;
-  provided_info?: Record<string, string>;
-  streaming?: boolean;
-  chunk?: string;
-  response?: string;
+  question?: {
+    id: string;
+    text: string;
+  };
+  documentId?: string;
+  message?: string;
+  answeredQuestionIds?: string[];
+  remainingAttempts?: number;
+}
+
+// Client message types
+export interface ClientMessage {
+  type: 'user_message';
+  content: string;
 }
 
 // WebSocket connection manager
 class WebSocketManager {
   private ws: WebSocket | null = null;
   private sessionId: string | null = null;
-  private messageHandlers: Map<string, (data: any) => void> = new Map();
+  private messageHandlers: Map<string, (data: WebSocketMessage) => void> = new Map();
   private connectionPromise: Promise<string> | null = null;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private reconnectDelays = [1000, 3000, 5000, 10000, 15000];
 
   // Connect to WebSocket and get session ID
-  async connect(): Promise<string> {
+  async connect(token: string): Promise<string> {
     if (this.connectionPromise) {
       return this.connectionPromise;
     }
 
     this.connectionPromise = new Promise((resolve, reject) => {
-      this.ws = new WebSocket(API_BASE_URL);
+      const url = `${API_BASE_URL}?token=${encodeURIComponent(token)}`;
+      this.ws = new WebSocket(url);
 
       this.ws.onopen = () => {
         console.log("WebSocket connected");
+        this.reconnectAttempts = 0; // Reset reconnect attempts on successful connection
       };
 
       this.ws.onmessage = (event) => {
         try {
           const data: WebSocketMessage = JSON.parse(event.data);
+          console.log("Received WebSocket message:", data);
           this.handleMessage(data, resolve, reject);
         } catch (error) {
           console.error("Failed to parse WebSocket message:", error);
@@ -59,13 +67,54 @@ class WebSocketManager {
         reject(new Error("WebSocket connection failed"));
       };
 
-      this.ws.onclose = () => {
-        console.log("WebSocket closed");
+      this.ws.onclose = (event) => {
+        console.log("WebSocket closed:", event.code, event.reason);
         this.cleanup();
+        
+        // Attempt reconnection if not an intentional close
+        if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
+          this.handleReconnect(token, resolve, reject);
+        }
+      };
+
+      // Set connection timeout
+      const connectionTimeout = setTimeout(() => {
+        if (this.ws?.readyState !== WebSocket.OPEN) {
+          this.ws?.close();
+          reject(new Error("Connection timeout"));
+        }
+      }, 10000);
+
+      this.ws.onopen = () => {
+        clearTimeout(connectionTimeout);
+        console.log("WebSocket connected");
+        this.reconnectAttempts = 0;
       };
     });
 
     return this.connectionPromise;
+  }
+
+  private handleReconnect(token: string, resolve: (sessionId: string) => void, reject: (error: Error) => void) {
+    const delay = this.reconnectDelays[this.reconnectAttempts] || this.reconnectDelays[this.reconnectDelays.length - 1];
+    
+    console.log(`Reconnection attempt ${this.reconnectAttempts + 1} in ${delay}ms`);
+    
+    setTimeout(async () => {
+      try {
+        this.reconnectAttempts++;
+        this.connectionPromise = null; // Reset promise
+        const sessionId = await this.connect(token);
+        resolve(sessionId);
+      } catch (error) {
+        console.error("Reconnection failed:", error);
+        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+          this.handleReconnect(token, resolve, reject);
+        } else {
+          reject(new Error("Max reconnection attempts reached"));
+        }
+      }
+    }, delay);
   }
 
   private handleMessage(
@@ -73,89 +122,86 @@ class WebSocketManager {
     resolve: (sessionId: string) => void,
     reject: (error: Error) => void
   ) {
-    // Handle initial connection response
-    if (data.connected && data.id) {
-      this.sessionId = data.id;
-      resolve(data.id);
-      return;
-    }
-
-    // Handle other message types
-    if (data.type) {
-      const handler = this.messageHandlers.get(data.type);
-      if (handler) {
-        handler(data);
-      }
+    // Handle session ID from any message type
+    if (data.sessionId && !this.sessionId) {
+      this.sessionId = data.sessionId;
     }
 
     // Handle specific message types
-    if (data.status === "started") {
-      const handler = this.messageHandlers.get("status_started");
-      if (handler) handler(data);
+    switch (data.type) {
+      case 'session_resumed':
+        console.log('Session resumed:', data.sessionId);
+        if (data.sessionId) {
+          resolve(data.sessionId);
+        }
+        break;
+
+      case 'next_question':
+        console.log('Next question received');
+        if (data.sessionId && !this.sessionId) {
+          resolve(data.sessionId);
+        }
+        break;
+
+      case 'session_complete':
+        console.log('Session completed, document ID:', data.documentId);
+        if (data.sessionId) {
+          resolve(data.sessionId);
+        }
+        // Intentional close after session completion
+        this.ws?.close(1000, 'Session completed');
+        break;
+
+      case 'error':
+        console.error('Server error:', data.message);
+        reject(new Error(data.message || 'Server error'));
+        break;
+
+      case 'warning':
+        console.warn('Server warning:', data.message);
+        break;
+
+      case 'guardrail_reprompt':
+        console.log('Guardrail reprompt:', data.message);
+        break;
+
+      case 'guardrail_exit':
+        console.log('Guardrail exit:', data.message);
+        this.ws?.close(1000, 'Guardrail exit');
+        break;
     }
 
-    if (data.missing_info_request) {
-      const handler = this.messageHandlers.get("missing_info_request");
-      if (handler) handler(data);
-    }
-
-    if (data.streaming) {
-      const handler = this.messageHandlers.get("streaming");
-      if (handler) handler(data);
-    }
-
-    if (data.status === "completed") {
-      const handler = this.messageHandlers.get("completed");
-      if (handler) handler(data);
-    }
-
-    if (data.status === "canceled") {
-      const handler = this.messageHandlers.get("canceled");
-      if (handler) handler(data);
+    // Call registered message handlers
+    const handler = this.messageHandlers.get(data.type);
+    if (handler) {
+      handler(data);
     }
   }
 
   // Register message handlers
-  onMessage(type: string, handler: (data: any) => void) {
+  onMessage(type: string, handler: (data: WebSocketMessage) => void) {
     this.messageHandlers.set(type, handler);
   }
 
-  // Send document request
-  async sendDocumentRequest(messages: string[]): Promise<void> {
+  // Send user message
+  async sendUserMessage(content: string): Promise<void> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error("WebSocket not connected");
     }
 
-    const request: WebSocketMessage = {
-      document_request: true,
-      messages: messages,
+    const message: ClientMessage = {
+      type: 'user_message',
+      content: content,
     };
 
-    this.ws.send(JSON.stringify(request));
-  }
-
-  // Send missing info response
-  async sendMissingInfoResponse(
-    userDeclined: boolean,
-    providedInfo: Record<string, string> = {}
-  ): Promise<void> {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      throw new Error("WebSocket not connected");
-    }
-
-    const response: WebSocketMessage = {
-      missing_info_response: true,
-      user_declined: userDeclined,
-      provided_info: providedInfo,
-    };
-
-    this.ws.send(JSON.stringify(response));
+    console.log('Sending message:', message);
+    this.ws.send(JSON.stringify(message));
   }
 
   // Close connection
   disconnect() {
     if (this.ws) {
-      this.ws.close();
+      this.ws.close(1000, 'User disconnect');
     }
     this.cleanup();
   }
@@ -181,17 +227,10 @@ const wsManager = new WebSocketManager();
 
 export const DocAPI = {
   // Start a new document generation session
-  async startSession(
-    prompt: string,
-    documentType: string
-  ): Promise<{ sessionId: string }> {
+  async startSession(token: string): Promise<{ sessionId: string }> {
     try {
       // Connect to WebSocket and get session ID
-      const sessionId = await wsManager.connect();
-
-      // Send document request
-      await wsManager.sendDocumentRequest([prompt]);
-
+      const sessionId = await wsManager.connect(token);
       return { sessionId };
     } catch (error) {
       console.error("Failed to start session:", error);
@@ -199,86 +238,30 @@ export const DocAPI = {
     }
   },
 
-  // Submit missing data to continue session
-  async submitMissingData(
-    sessionId: string,
-    providedData: ProvidedField[],
-    userDeclined?: boolean
-  ): Promise<any> {
+  // Send user message to continue session
+  async sendMessage(content: string): Promise<void> {
     try {
-      // Convert provided data to the format expected by the server
-      const providedInfo: Record<string, string> = {};
-      providedData.forEach(({ field, answer }) => {
-        providedInfo[field] = answer;
-      });
-
-      // Send missing info response
-      await wsManager.sendMissingInfoResponse(userDeclined!, providedInfo);
-
-      return { success: true };
+      await wsManager.sendUserMessage(content);
     } catch (error) {
-      console.error("Failed to submit missing data:", error);
+      console.error("Failed to send message:", error);
       throw error;
     }
   },
 
-  // Stream document content
-  async streamDocument(
-    sessionId: string,
-    onChunk: (chunk: string) => void,
-    onComplete: (finalContent: string) => void,
-    onProgress: (progress: { current: number; total: number }) => void,
-    onError: (error: string) => void,
-    onMissingInfo: (
-      fields: Array<{ field: string; explanation: string; example: string }>,
-      message: string
-    ) => void
-  ): Promise<void> {
-    let finalContent = "";
-
-    // Register message handlers
-    wsManager.onMessage("status_started", (data) => {
-      console.log("Document generation started:", data.message);
-    });
-
-    wsManager.onMessage("missing_info_request", (data) => {
-      onMissingInfo(data.fields || [], data.message || "");
-    });
-
-    wsManager.onMessage("streaming", (data) => {
-      if (data.chunk) {
-        finalContent += data.chunk;
-        onChunk(data.chunk);
-      }
-    });
-
-    wsManager.onMessage("completed", (data) => {
-      if (data.response) {
-        finalContent = data.response;
-      }
-      onComplete(finalContent);
-      wsManager.disconnect();
-    });
-
-    wsManager.onMessage("canceled", (data) => {
-      onError(data.message || "Session canceled by user");
-      wsManager.disconnect();
-    });
-
-    // Handle connection errors
-    if (!wsManager.isConnected()) {
-      onError("WebSocket connection lost");
-      return;
-    }
+  // Listen for chat messages
+  onMessage(
+    type: 'session_resumed' | 'next_question' | 'session_complete' | 'error' | 'warning' | 'guardrail_reprompt' | 'guardrail_exit',
+    handler: (data: WebSocketMessage) => void
+  ): void {
+    wsManager.onMessage(type, handler);
   },
 
   // Export final document in a specified format (PDF, Word, etc.)
   async exportDocument(documentId: string, format: string): Promise<Blob> {
+    // This will be a separate HTTP endpoint for document export
+    const baseUrl = API_BASE_URL.replace("ws://", "http://").replace("/chat", "");
     const response = await fetch(
-      `${API_BASE_URL.replace("ws://", "http://").replace(
-        "/stream-document",
-        ""
-      )}/${documentId}/export?format=${format}`
+      `${baseUrl}/documents/${documentId}/export?format=${format}`
     );
     if (!response.ok) throw new Error("Failed to export document");
     return await response.blob();

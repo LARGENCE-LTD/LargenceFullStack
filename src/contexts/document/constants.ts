@@ -49,7 +49,7 @@ export const STORAGE_KEYS = {
 } as const;
 
 // API base URL
-export const API_BASE_URL = "ws://localhost:8000/stream-document";
+export const API_BASE_URL = "ws://localhost:8080/chat";
 
 // Document types
 export const DOCUMENT_TYPES = [
