@@ -1,6 +1,6 @@
 import { Dispatch } from "react";
-import { DocAPI } from "./docAPI";
-import { DocumentAction, ProvidedField, State } from "./state";
+import { DocAPI, WizardAPI } from "./docAPI";
+import { DocumentAction, ProvidedField, State, WizardQuestion, WizardAnswer } from "./state";
 import { DOCUMENT_ACTION_TYPES } from "./constants";
 import { loadHistory, loadSession } from "./utils";
 import { type DocumentType } from "./constants";
@@ -10,7 +10,7 @@ export function useDocumentActions(
   state: State,
   dispatch: Dispatch<DocumentAction>
 ) {
-  // Start a new document generation session
+  // Start a new document generation session (legacy)
   const startSession = async (
     prompt: string,
     documentType: DocumentType,
@@ -64,7 +64,169 @@ export function useDocumentActions(
     }
   };
 
-  // Provide missing data to backend
+  // Start a new wizard session
+  const startWizardSession = async (templateId: string) => {
+    dispatch({ type: DOCUMENT_ACTION_TYPES.SET_LOADING, payload: true });
+    dispatch({ type: DOCUMENT_ACTION_TYPES.SET_ERROR, payload: "" });
+    dispatch({ type: DOCUMENT_ACTION_TYPES.SET_WIZARD_MODE, payload: true });
+
+    try {
+      // Start wizard WebSocket connection
+      const response = await WizardAPI.startWizardSession(templateId);
+
+      dispatch({
+        type: DOCUMENT_ACTION_TYPES.SET_WIZARD_SESSION,
+        payload: { sessionId: response.sessionId },
+      });
+      dispatch({
+        type: DOCUMENT_ACTION_TYPES.SET_SESSION_STATUS,
+        payload: "starting",
+      });
+
+      // Set up wizard message handlers
+      setupWizardHandlers();
+    } catch (error: unknown) {
+      let errorMessage = "Failed to start wizard session";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      dispatch({
+        type: DOCUMENT_ACTION_TYPES.SET_ERROR,
+        payload: errorMessage,
+      });
+      dispatch({
+        type: DOCUMENT_ACTION_TYPES.SET_SESSION_STATUS,
+        payload: "error",
+      });
+    } finally {
+      dispatch({ type: DOCUMENT_ACTION_TYPES.SET_LOADING, payload: false });
+    }
+  };
+
+  // Set up wizard message handlers
+  const setupWizardHandlers = () => {
+    WizardAPI.onNextQuestion((question: WizardQuestion) => {
+      dispatch({
+        type: DOCUMENT_ACTION_TYPES.SET_CURRENT_QUESTION,
+        payload: question,
+      });
+      dispatch({
+        type: DOCUMENT_ACTION_TYPES.UPDATE_WIZARD_PROGRESS,
+        payload: { current: question.fieldNumber - 1, total: question.totalFields },
+      });
+      dispatch({
+        type: DOCUMENT_ACTION_TYPES.SET_SESSION_STATUS,
+        payload: "missing_info",
+      });
+    });
+
+    WizardAPI.onSessionResumed((data: any) => {
+      dispatch({
+        type: DOCUMENT_ACTION_TYPES.SET_WIZARD_SESSION,
+        payload: { sessionId: data.sessionId },
+      });
+      dispatch({
+        type: DOCUMENT_ACTION_TYPES.UPDATE_WIZARD_PROGRESS,
+        payload: { current: data.currentQuestionIndex, total: data.answerHistory.length + 1 },
+      });
+      // Restore answers to state
+      data.answerHistory.forEach((answer: any) => {
+        dispatch({
+          type: DOCUMENT_ACTION_TYPES.ADD_WIZARD_ANSWER,
+          payload: {
+            questionId: answer.questionId,
+            answer: answer.answer,
+            timestamp: answer.timestamp,
+          },
+        });
+      });
+    });
+
+    WizardAPI.onGenerationComplete((data: any) => {
+      dispatch({
+        type: DOCUMENT_ACTION_TYPES.SET_DOCUMENT_CONTENT,
+        payload: `Document generated with ID: ${data.documentId}`,
+      });
+      dispatch({
+        type: DOCUMENT_ACTION_TYPES.SET_SESSION_STATUS,
+        payload: "completed",
+      });
+      dispatch({
+        type: DOCUMENT_ACTION_TYPES.SET_WIZARD_MODE,
+        payload: false,
+      });
+
+      // Create document session entry
+      const documentSession = {
+        id: data.documentId,
+        title: state.suggestedTitle || "Generated Document",
+        documentType: state.documentType || "general_contract",
+        content: `Document generated with ID: ${data.documentId}`,
+        createdAt: new Date().toISOString(),
+        originalPrompt: state.originalPrompt,
+        missingData: state.missingData,
+        providedData: state.wizardAnswers.map(a => ({ field: a.questionId, answer: a.answer })),
+        sessionId: state.wizardSessionId,
+        status: "completed" as const,
+        lastModified: new Date().toISOString(),
+      };
+      dispatch({
+        type: DOCUMENT_ACTION_TYPES.ADD_TO_DOCUMENT_HISTORY,
+        payload: documentSession,
+      });
+    });
+
+    WizardAPI.onError((error: any) => {
+      dispatch({
+        type: DOCUMENT_ACTION_TYPES.SET_ERROR,
+        payload: error.message || "Wizard error occurred",
+      });
+      dispatch({
+        type: DOCUMENT_ACTION_TYPES.SET_SESSION_STATUS,
+        payload: "error",
+      });
+    });
+  };
+
+  // Submit wizard answer
+  const submitWizardAnswer = (questionId: string, answer: string) => {
+    dispatch({ type: DOCUMENT_ACTION_TYPES.SET_LOADING, payload: true });
+
+    try {
+      // Add answer to state
+      const wizardAnswer: WizardAnswer = {
+        questionId,
+        answer,
+        timestamp: new Date().toISOString(),
+      };
+      dispatch({
+        type: DOCUMENT_ACTION_TYPES.ADD_WIZARD_ANSWER,
+        payload: wizardAnswer,
+      });
+
+      // Send answer to server
+      WizardAPI.submitAnswer(questionId, answer);
+
+      // Clear current question
+      dispatch({
+        type: DOCUMENT_ACTION_TYPES.SET_CURRENT_QUESTION,
+        payload: null,
+      });
+    } catch (error: unknown) {
+      let errorMessage = "Failed to submit answer";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      dispatch({
+        type: DOCUMENT_ACTION_TYPES.SET_ERROR,
+        payload: errorMessage,
+      });
+    } finally {
+      dispatch({ type: DOCUMENT_ACTION_TYPES.SET_LOADING, payload: false });
+    }
+  };
+
+  // Provide missing data to backend (legacy)
   const submitMissingData = async (
     sessionId: string,
     providedData: ProvidedField[],
@@ -107,7 +269,7 @@ export function useDocumentActions(
     }
   };
 
-  // Stream document content as it's generated
+  // Stream document content (legacy)
   const startStreaming = async (sessionId: string) => {
     dispatch({
       type: DOCUMENT_ACTION_TYPES.SET_SESSION_STATUS,
@@ -270,6 +432,7 @@ export function useDocumentActions(
   const resetSession = () => {
     // Disconnect WebSocket if connected
     DocAPI.disconnect();
+    WizardAPI.disconnect();
 
     dispatch({ type: DOCUMENT_ACTION_TYPES.RESET_SESSION });
     // Optionally clear persisted session from localStorageUtils
@@ -279,27 +442,10 @@ export function useDocumentActions(
   const clearError = () =>
     dispatch({ type: DOCUMENT_ACTION_TYPES.CLEAR_ERROR });
 
-  // Load document from history
-  const loadDocumentFromHistory = (documentId: string) => {
-    const document = state.documentSessions.find(
-      (doc) => doc.id === documentId
-    );
-    if (document) {
-      dispatch({
-        type: DOCUMENT_ACTION_TYPES.LOAD_DOCUMENT_FROM_HISTORY,
-        payload: document,
-      });
-    } else {
-      dispatch({
-        type: DOCUMENT_ACTION_TYPES.SET_ERROR,
-        payload: "Document not found in history",
-      });
-    }
-  };
-
-  // Expose all actions to the provider
   return {
     startSession,
+    startWizardSession,
+    submitWizardAnswer,
     submitMissingData,
     startStreaming,
     exportDocument,
@@ -307,6 +453,5 @@ export function useDocumentActions(
     loadPersistedState,
     resetSession,
     clearError,
-    loadDocumentFromHistory,
   };
 }

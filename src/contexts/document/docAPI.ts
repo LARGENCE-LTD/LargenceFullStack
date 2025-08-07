@@ -1,60 +1,173 @@
 import { ProvidedField } from "@/contexts/document/state";
-import { API_BASE_URL } from "./constants";
+import { supabase } from "@/lib/supabase";
 
-// WebSocket message types matching the new server contract
-export interface WebSocketMessage {
-  type: 'session_resumed' | 'next_question' | 'session_complete' | 'error' | 'warning' | 'guardrail_reprompt' | 'guardrail_exit';
-  sessionId?: string;
-  history?: Array<{
-    role: 'user' | 'ai';
-    content: string;
-    timestamp?: string;
-  }>;
-  question?: {
-    id: string;
-    text: string;
+// New WebSocket message types for wizard flow
+export interface WizardWebSocketMessage {
+  type: 'session_resumed' | 'next_question' | 'generation_complete' | 'error';
+  payload: any;
+}
+
+export interface UserAnswerMessage {
+  type: 'submit_answer';
+  payload: {
+    questionId: string;
+    answer: string;
   };
-  documentId?: string;
+}
+
+// Legacy WebSocket message types for backward compatibility
+export interface WebSocketMessage {
+  type?: string;
+  connected?: boolean;
+  id?: string;
+  document_request?: boolean;
+  messages?: string[];
+  status?: string;
   message?: string;
-  answeredQuestionIds?: string[];
-  remainingAttempts?: number;
+  missing_info_request?: boolean;
+  fields?: Array<{
+    field: string;
+    explanation: string;
+    example: string;
+  }>;
+  missing_info_response?: boolean;
+  user_declined?: boolean;
+  provided_info?: Record<string, string>;
+  streaming?: boolean;
+  chunk?: string;
+  response?: string;
 }
 
-// Client message types
-export interface ClientMessage {
-  type: 'user_message';
-  content: string;
+// Updated WebSocket manager for wizard flow
+class WizardWebSocketManager {
+  private ws: WebSocket | null = null;
+  private sessionId: string | null = null;
+  private messageHandlers: Map<string, (data: any) => void> = new Map();
+  private connectionPromise: Promise<string> | null = null;
+
+  async connect(templateId: string): Promise<string> {
+    if (this.connectionPromise) {
+      return this.connectionPromise;
+    }
+
+    this.connectionPromise = new Promise(async (resolve, reject) => {
+      try {
+        // Get current session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session?.access_token) {
+          reject(new Error('No authenticated session'));
+          return;
+        }
+
+        const wsUrl = `ws://localhost:8000/start-session?token=${session.access_token}&templateId=${templateId}`;
+        this.ws = new WebSocket(wsUrl);
+
+        this.ws.onopen = () => {
+          console.log("Wizard WebSocket connected");
+        };
+
+        this.ws.onmessage = (event) => {
+          try {
+            const data: WizardWebSocketMessage = JSON.parse(event.data);
+            this.handleMessage(data, resolve, reject);
+          } catch (error) {
+            console.error("Failed to parse WebSocket message:", error);
+            reject(new Error("Invalid message format"));
+          }
+        };
+
+        this.ws.onerror = (error) => {
+          console.error("WebSocket error:", error);
+          reject(new Error("WebSocket connection failed"));
+        };
+
+        this.ws.onclose = () => {
+          console.log("WebSocket closed");
+          this.cleanup();
+        };
+      } catch (error) {
+        reject(error);
+      }
+    });
+
+    return this.connectionPromise;
+  }
+
+  private handleMessage(
+    data: WizardWebSocketMessage,
+    resolve: (sessionId: string) => void,
+    reject: (error: Error) => void
+  ) {
+    if (data.type === 'session_resumed') {
+      this.sessionId = data.payload.sessionId;
+      resolve(data.payload.sessionId);
+      return;
+    }
+
+    // Handle other message types
+    if (data.type) {
+      const handler = this.messageHandlers.get(data.type);
+      if (handler) {
+        handler(data.payload);
+      }
+    }
+  }
+
+  sendAnswer(questionId: string, answer: string) {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      throw new Error("WebSocket not connected");
+    }
+
+    const message: UserAnswerMessage = {
+      type: 'submit_answer',
+      payload: { questionId, answer }
+    };
+
+    this.ws.send(JSON.stringify(message));
+  }
+
+  onMessage(type: string, handler: (data: any) => void) {
+    this.messageHandlers.set(type, handler);
+  }
+
+  disconnect() {
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+    this.connectionPromise = null;
+    this.sessionId = null;
+  }
+
+  isConnected(): boolean {
+    return this.ws?.readyState === WebSocket.OPEN;
+  }
 }
 
-// WebSocket connection manager
+// Legacy WebSocket connection manager (for backward compatibility)
 class WebSocketManager {
   private ws: WebSocket | null = null;
   private sessionId: string | null = null;
-  private messageHandlers: Map<string, (data: WebSocketMessage) => void> = new Map();
+  private messageHandlers: Map<string, (data: any) => void> = new Map();
   private connectionPromise: Promise<string> | null = null;
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectDelays = [1000, 3000, 5000, 10000, 15000];
 
   // Connect to WebSocket and get session ID
-  async connect(token: string): Promise<string> {
+  async connect(): Promise<string> {
     if (this.connectionPromise) {
       return this.connectionPromise;
     }
 
     this.connectionPromise = new Promise((resolve, reject) => {
-      const url = `${API_BASE_URL}?token=${encodeURIComponent(token)}`;
-      this.ws = new WebSocket(url);
+      this.ws = new WebSocket("ws://localhost:8000/stream-document");
 
       this.ws.onopen = () => {
         console.log("WebSocket connected");
-        this.reconnectAttempts = 0; // Reset reconnect attempts on successful connection
       };
 
       this.ws.onmessage = (event) => {
         try {
           const data: WebSocketMessage = JSON.parse(event.data);
-          console.log("Received WebSocket message:", data);
           this.handleMessage(data, resolve, reject);
         } catch (error) {
           console.error("Failed to parse WebSocket message:", error);
@@ -67,54 +180,13 @@ class WebSocketManager {
         reject(new Error("WebSocket connection failed"));
       };
 
-      this.ws.onclose = (event) => {
-        console.log("WebSocket closed:", event.code, event.reason);
+      this.ws.onclose = () => {
+        console.log("WebSocket closed");
         this.cleanup();
-        
-        // Attempt reconnection if not an intentional close
-        if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
-          this.handleReconnect(token, resolve, reject);
-        }
-      };
-
-      // Set connection timeout
-      const connectionTimeout = setTimeout(() => {
-        if (this.ws?.readyState !== WebSocket.OPEN) {
-          this.ws?.close();
-          reject(new Error("Connection timeout"));
-        }
-      }, 10000);
-
-      this.ws.onopen = () => {
-        clearTimeout(connectionTimeout);
-        console.log("WebSocket connected");
-        this.reconnectAttempts = 0;
       };
     });
 
     return this.connectionPromise;
-  }
-
-  private handleReconnect(token: string, resolve: (sessionId: string) => void, reject: (error: Error) => void) {
-    const delay = this.reconnectDelays[this.reconnectAttempts] || this.reconnectDelays[this.reconnectDelays.length - 1];
-    
-    console.log(`Reconnection attempt ${this.reconnectAttempts + 1} in ${delay}ms`);
-    
-    setTimeout(async () => {
-      try {
-        this.reconnectAttempts++;
-        this.connectionPromise = null; // Reset promise
-        const sessionId = await this.connect(token);
-        resolve(sessionId);
-      } catch (error) {
-        console.error("Reconnection failed:", error);
-        if (this.reconnectAttempts < this.maxReconnectAttempts) {
-          this.handleReconnect(token, resolve, reject);
-        } else {
-          reject(new Error("Max reconnection attempts reached"));
-        }
-      }
-    }, delay);
   }
 
   private handleMessage(
@@ -122,115 +194,165 @@ class WebSocketManager {
     resolve: (sessionId: string) => void,
     reject: (error: Error) => void
   ) {
-    // Handle session ID from any message type
-    if (data.sessionId && !this.sessionId) {
-      this.sessionId = data.sessionId;
+    // Handle initial connection response
+    if (data.connected && data.id) {
+      this.sessionId = data.id;
+      resolve(data.id);
+      return;
+    }
+
+    // Handle other message types
+    if (data.type) {
+      const handler = this.messageHandlers.get(data.type);
+      if (handler) {
+        handler(data);
+      }
     }
 
     // Handle specific message types
-    switch (data.type) {
-      case 'session_resumed':
-        console.log('Session resumed:', data.sessionId);
-        if (data.sessionId) {
-          resolve(data.sessionId);
-        }
-        break;
-
-      case 'next_question':
-        console.log('Next question received');
-        if (data.sessionId && !this.sessionId) {
-          resolve(data.sessionId);
-        }
-        break;
-
-      case 'session_complete':
-        console.log('Session completed, document ID:', data.documentId);
-        if (data.sessionId) {
-          resolve(data.sessionId);
-        }
-        // Intentional close after session completion
-        this.ws?.close(1000, 'Session completed');
-        break;
-
-      case 'error':
-        console.error('Server error:', data.message);
-        reject(new Error(data.message || 'Server error'));
-        break;
-
-      case 'warning':
-        console.warn('Server warning:', data.message);
-        break;
-
-      case 'guardrail_reprompt':
-        console.log('Guardrail reprompt:', data.message);
-        break;
-
-      case 'guardrail_exit':
-        console.log('Guardrail exit:', data.message);
-        this.ws?.close(1000, 'Guardrail exit');
-        break;
+    if (data.status === "started") {
+      const handler = this.messageHandlers.get("status_started");
+      if (handler) handler(data);
     }
 
-    // Call registered message handlers
-    const handler = this.messageHandlers.get(data.type);
-    if (handler) {
-      handler(data);
+    if (data.missing_info_request) {
+      const handler = this.messageHandlers.get("missing_info_request");
+      if (handler) handler(data);
+    }
+
+    if (data.streaming) {
+      const handler = this.messageHandlers.get("streaming");
+      if (handler) handler(data);
+    }
+
+    if (data.status === "completed") {
+      const handler = this.messageHandlers.get("completed");
+      if (handler) handler(data);
+    }
+
+    if (data.status === "canceled") {
+      const handler = this.messageHandlers.get("canceled");
+      if (handler) handler(data);
     }
   }
 
-  // Register message handlers
-  onMessage(type: string, handler: (data: WebSocketMessage) => void) {
-    this.messageHandlers.set(type, handler);
-  }
-
-  // Send user message
-  async sendUserMessage(content: string): Promise<void> {
+  // Send document request
+  async sendDocumentRequest(messages: string[]): Promise<void> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error("WebSocket not connected");
     }
 
-    const message: ClientMessage = {
-      type: 'user_message',
-      content: content,
+    const request: WebSocketMessage = {
+      document_request: true,
+      messages: messages,
     };
 
-    console.log('Sending message:', message);
-    this.ws.send(JSON.stringify(message));
+    this.ws.send(JSON.stringify(request));
   }
 
-  // Close connection
+  // Send missing info response
+  async sendMissingInfoResponse(userDeclined: boolean, providedInfo: Record<string, string>): Promise<void> {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      throw new Error("WebSocket not connected");
+    }
+
+    const request: WebSocketMessage = {
+      missing_info_response: true,
+      user_declined: userDeclined,
+      provided_info: providedInfo,
+    };
+
+    this.ws.send(JSON.stringify(request));
+  }
+
+  onMessage(type: string, handler: (data: any) => void) {
+    this.messageHandlers.set(type, handler);
+  }
+
   disconnect() {
     if (this.ws) {
-      this.ws.close(1000, 'User disconnect');
+      this.ws.close();
+      this.ws = null;
     }
-    this.cleanup();
-  }
-
-  private cleanup() {
-    this.ws = null;
-    this.sessionId = null;
     this.connectionPromise = null;
-    this.messageHandlers.clear();
-  }
-
-  getSessionId(): string | null {
-    return this.sessionId;
+    this.sessionId = null;
   }
 
   isConnected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN;
   }
+
+  private cleanup() {
+    this.ws = null;
+    this.connectionPromise = null;
+    this.sessionId = null;
+  }
 }
 
-// Global WebSocket manager instance
-const wsManager = new WebSocketManager();
+// Global WebSocket manager instances
+const wizardWsManager = new WizardWebSocketManager();
+const legacyWsManager = new WebSocketManager();
 
+// New Wizard API
+export const WizardAPI = {
+  // Start a new wizard session
+  async startWizardSession(templateId: string): Promise<{ sessionId: string }> {
+    try {
+      const sessionId = await wizardWsManager.connect(templateId);
+      return { sessionId };
+    } catch (error) {
+      console.error("Failed to start wizard session:", error);
+      throw error;
+    }
+  },
+
+  // Submit answer to current question
+  submitAnswer(questionId: string, answer: string): void {
+    wizardWsManager.sendAnswer(questionId, answer);
+  },
+
+  // Set up message handlers
+  onNextQuestion(handler: (question: any) => void): void {
+    wizardWsManager.onMessage('next_question', handler);
+  },
+
+  onSessionResumed(handler: (data: any) => void): void {
+    wizardWsManager.onMessage('session_resumed', handler);
+  },
+
+  onGenerationComplete(handler: (data: any) => void): void {
+    wizardWsManager.onMessage('generation_complete', handler);
+  },
+
+  onError(handler: (error: any) => void): void {
+    wizardWsManager.onMessage('error', handler);
+  },
+
+  // Disconnect
+  disconnect(): void {
+    wizardWsManager.disconnect();
+  },
+
+  // Check connection status
+  isConnected(): boolean {
+    return wizardWsManager.isConnected();
+  }
+};
+
+// Legacy DocAPI (for backward compatibility)
 export const DocAPI = {
   // Start a new document generation session
-  async startSession(token: string): Promise<{ sessionId: string }> {
+  async startSession(
+    prompt: string,
+    documentType: string
+  ): Promise<{ sessionId: string }> {
     try {
       // Connect to WebSocket and get session ID
-      const sessionId = await wsManager.connect(token);
+      const sessionId = await legacyWsManager.connect();
+
+      // Send document request
+      await legacyWsManager.sendDocumentRequest([prompt]);
+
       return { sessionId };
     } catch (error) {
       console.error("Failed to start session:", error);
@@ -238,42 +360,95 @@ export const DocAPI = {
     }
   },
 
-  // Send user message to continue session
-  async sendMessage(content: string): Promise<void> {
+  // Submit missing data to continue session
+  async submitMissingData(
+    sessionId: string,
+    providedData: ProvidedField[],
+    userDeclined?: boolean
+  ): Promise<any> {
     try {
-      await wsManager.sendUserMessage(content);
+      // Convert provided data to the format expected by the server
+      const providedInfo: Record<string, string> = {};
+      providedData.forEach(({ field, answer }) => {
+        providedInfo[field] = answer;
+      });
+
+      // Send missing info response
+      await legacyWsManager.sendMissingInfoResponse(userDeclined!, providedInfo);
+
+      return { success: true };
     } catch (error) {
-      console.error("Failed to send message:", error);
+      console.error("Failed to submit missing data:", error);
       throw error;
     }
   },
 
-  // Listen for chat messages
-  onMessage(
-    type: 'session_resumed' | 'next_question' | 'session_complete' | 'error' | 'warning' | 'guardrail_reprompt' | 'guardrail_exit',
-    handler: (data: WebSocketMessage) => void
-  ): void {
-    wsManager.onMessage(type, handler);
+  // Stream document content
+  async streamDocument(
+    sessionId: string,
+    onChunk: (chunk: string) => void,
+    onComplete: (finalContent: string) => void,
+    onProgress: (progress: { current: number; total: number }) => void,
+    onError: (error: string) => void,
+    onMissingInfo: (
+      fields: Array<{ field: string; explanation: string; example: string }>,
+      message: string
+    ) => void
+  ): Promise<void> {
+    let finalContent = "";
+
+    // Register message handlers
+    legacyWsManager.onMessage("status_started", (data) => {
+      console.log("Document generation started:", data.message);
+    });
+
+    legacyWsManager.onMessage("missing_info_request", (data) => {
+      onMissingInfo(data.fields || [], data.message || "");
+    });
+
+    legacyWsManager.onMessage("streaming", (data) => {
+      if (data.chunk) {
+        finalContent += data.chunk;
+        onChunk(data.chunk);
+      }
+    });
+
+    legacyWsManager.onMessage("completed", (data) => {
+      if (data.response) {
+        finalContent = data.response;
+      }
+      onComplete(finalContent);
+      legacyWsManager.disconnect();
+    });
+
+    legacyWsManager.onMessage("canceled", (data) => {
+      onError(data.message || "Session canceled by user");
+      legacyWsManager.disconnect();
+    });
+
+    // Handle connection errors
+    if (!legacyWsManager.isConnected()) {
+      onError("WebSocket connection lost");
+      return;
+    }
   },
 
   // Export final document in a specified format (PDF, Word, etc.)
   async exportDocument(documentId: string, format: string): Promise<Blob> {
-    // This will be a separate HTTP endpoint for document export
-    const baseUrl = API_BASE_URL.replace("ws://", "http://").replace("/chat", "");
     const response = await fetch(
-      `${baseUrl}/documents/${documentId}/export?format=${format}`
+      `http://localhost:8000/${documentId}/export?format=${format}`
     );
     if (!response.ok) throw new Error("Failed to export document");
     return await response.blob();
   },
 
-  // Get the WebSocket manager for direct access if needed
-  getWebSocketManager(): WebSocketManager {
-    return wsManager;
-  },
-
   // Disconnect WebSocket
   disconnect(): void {
-    wsManager.disconnect();
+    legacyWsManager.disconnect();
   },
+
+  // Get WebSocket manager for advanced usage
+  getWebSocketManager(): WebSocketManager {
+    return legacyWsManager;
+  }
 };

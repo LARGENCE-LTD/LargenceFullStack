@@ -1,103 +1,38 @@
-import { Dispatch } from "react";
-import { UserAPI } from "./userAPI";
-import { UserAction, UserState, UserPreferences } from "./state";
-import { USER_ACTION_TYPES } from "./constants";
-import { saveToStorage, loadFromStorage, clearStorage } from "./utils";
+import { Dispatch } from 'react';
+import { supabase } from '@/lib/supabase';
+import { UserState, UserAction } from './state';
+import { USER_ACTION_TYPES } from './constants';
 
 export function useUserActions(
   state: UserState,
   dispatch: Dispatch<UserAction>
 ) {
-  // Authentication actions
+  // Login with Supabase Auth
   const login = async (email: string, password: string) => {
     dispatch({ type: USER_ACTION_TYPES.SET_LOADING, payload: true });
-    dispatch({ type: USER_ACTION_TYPES.CLEAR_ERROR });
+    dispatch({ type: USER_ACTION_TYPES.SET_ERROR, payload: null });
 
     try {
-      const response = await UserAPI.login(email, password);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-      // Update state
-      dispatch({ type: USER_ACTION_TYPES.SET_TOKEN, payload: response.token });
+      if (error) throw error;
+
       dispatch({ type: USER_ACTION_TYPES.SET_AUTHENTICATED, payload: true });
-
-      // Load user data
-      await loadUserData(response.token);
-
-      // Add activity
-      addActivity("login", "User logged in successfully");
-    } catch (error: any) {
-      dispatch({ type: USER_ACTION_TYPES.SET_ERROR, payload: error.message });
-      throw error;
-    } finally {
-      dispatch({ type: USER_ACTION_TYPES.SET_LOADING, payload: false });
-    }
-  };
-
-  const signup = async (userData: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    password: string;
-  }) => {
-    dispatch({ type: USER_ACTION_TYPES.SET_LOADING, payload: true });
-    dispatch({ type: USER_ACTION_TYPES.CLEAR_ERROR });
-
-    try {
-      await UserAPI.signup(userData);
-      // Note: Signup doesn't automatically log in - user needs to login separately
-    } catch (error: any) {
-      dispatch({ type: USER_ACTION_TYPES.SET_ERROR, payload: error.message });
-      throw error;
-    } finally {
-      dispatch({ type: USER_ACTION_TYPES.SET_LOADING, payload: false });
-    }
-  };
-
-  const logout = async () => {
-    dispatch({ type: USER_ACTION_TYPES.SET_LOADING, payload: true });
-
-    try {
-      if (state.token) {
-        await UserAPI.logout(state.token);
-      }
-    } catch (error) {
-      // Continue with logout even if API call fails
-      console.error("Logout API error:", error);
-    } finally {
-      // Clear localStorage
-      localStorage.removeItem("auth_token");
-      clearStorage();
-
-      // Reset state
-      dispatch({ type: USER_ACTION_TYPES.LOGOUT });
-      dispatch({ type: USER_ACTION_TYPES.SET_LOADING, payload: false });
-    }
-  };
-
-  // User data loading
-  const loadUserData = async (token: string) => {
-    try {
-      // Load profile, subscription, usage, and preferences in parallel
-      const [profile, subscription, usage, preferences, activities] =
-        await Promise.all([
-          UserAPI.getProfile(token),
-          UserAPI.getSubscription(token).catch(() => null), // Optional
-          UserAPI.getUsage(token),
-          UserAPI.getPreferences(token),
-          UserAPI.getActivities(token, 20), // Load last 20 activities
-        ]);
-
-      dispatch({ type: USER_ACTION_TYPES.SET_PROFILE, payload: profile });
+      dispatch({ type: USER_ACTION_TYPES.SET_USER, payload: data.user });
+      
+      // Add login activity
       dispatch({
-        type: USER_ACTION_TYPES.SET_SUBSCRIPTION,
-        payload: subscription,
+        type: USER_ACTION_TYPES.ADD_ACTIVITY,
+        payload: {
+          id: `act_${Date.now()}`,
+          type: 'login',
+          description: 'User logged in successfully',
+          timestamp: new Date().toISOString(),
+        },
       });
-      dispatch({ type: USER_ACTION_TYPES.SET_USAGE, payload: usage });
-      dispatch({
-        type: USER_ACTION_TYPES.SET_PREFERENCES,
-        payload: preferences,
-      });
-      dispatch({ type: USER_ACTION_TYPES.SET_ACTIVITIES, payload: activities });
 
       // Update last activity
       dispatch({
@@ -105,276 +40,208 @@ export function useUserActions(
         payload: new Date().toISOString(),
       });
     } catch (error: any) {
-      dispatch({ type: USER_ACTION_TYPES.SET_ERROR, payload: error.message });
+      dispatch({
+        type: USER_ACTION_TYPES.SET_ERROR,
+        payload: error.message || 'Login failed',
+      });
+    } finally {
+      dispatch({ type: USER_ACTION_TYPES.SET_LOADING, payload: false });
     }
   };
 
-  // Profile management
-  const updateProfile = async (
-    profileData: Partial<{ firstName: string; lastName: string; email: string }>
-  ) => {
-    if (!state.token) throw new Error("No authentication token");
-
+  // Signup with Supabase Auth
+  const signup = async (email: string, password: string, userData: any) => {
     dispatch({ type: USER_ACTION_TYPES.SET_LOADING, payload: true });
-    dispatch({ type: USER_ACTION_TYPES.CLEAR_ERROR });
+    dispatch({ type: USER_ACTION_TYPES.SET_ERROR, payload: null });
 
     try {
-      const updatedProfile = await UserAPI.updateProfile(
-        state.token,
-        profileData
-      );
-      dispatch({
-        type: USER_ACTION_TYPES.SET_PROFILE,
-        payload: updatedProfile,
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: userData,
+        },
       });
 
-      addActivity("profile_updated", "Profile updated successfully");
-    } catch (error: any) {
-      dispatch({ type: USER_ACTION_TYPES.SET_ERROR, payload: error.message });
-      throw error;
-    } finally {
-      dispatch({ type: USER_ACTION_TYPES.SET_LOADING, payload: false });
-    }
-  };
+      if (error) throw error;
 
-  const changePassword = async (
-    currentPassword: string,
-    newPassword: string
-  ) => {
-    if (!state.token) throw new Error("No authentication token");
-
-    dispatch({ type: USER_ACTION_TYPES.SET_LOADING, payload: true });
-    dispatch({ type: USER_ACTION_TYPES.CLEAR_ERROR });
-
-    try {
-      await UserAPI.changePassword(state.token, currentPassword, newPassword);
-      addActivity("profile_updated", "Password changed successfully");
-    } catch (error: any) {
-      dispatch({ type: USER_ACTION_TYPES.SET_ERROR, payload: error.message });
-      throw error;
-    } finally {
-      dispatch({ type: USER_ACTION_TYPES.SET_LOADING, payload: false });
-    }
-  };
-
-  // Subscription management
-  const updateSubscription = async (planId: string) => {
-    if (!state.token) throw new Error("No authentication token");
-
-    dispatch({ type: USER_ACTION_TYPES.SET_LOADING, payload: true });
-    dispatch({ type: USER_ACTION_TYPES.CLEAR_ERROR });
-
-    try {
-      const updatedSubscription = await UserAPI.updateSubscription(
-        state.token,
-        planId
-      );
+      dispatch({ type: USER_ACTION_TYPES.SET_AUTHENTICATED, payload: true });
+      dispatch({ type: USER_ACTION_TYPES.SET_USER, payload: data.user });
+      
+      // Add signup activity
       dispatch({
-        type: USER_ACTION_TYPES.SET_SUBSCRIPTION,
-        payload: updatedSubscription,
+        type: USER_ACTION_TYPES.ADD_ACTIVITY,
+        payload: {
+          id: `act_${Date.now()}`,
+          type: 'login',
+          description: 'User account created successfully',
+          timestamp: new Date().toISOString(),
+        },
+      });
+    } catch (error: any) {
+      dispatch({
+        type: USER_ACTION_TYPES.SET_ERROR,
+        payload: error.message || 'Signup failed',
+      });
+    } finally {
+      dispatch({ type: USER_ACTION_TYPES.SET_LOADING, payload: false });
+    }
+  };
+
+  // Logout with Supabase Auth
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      
+      // Add logout activity before clearing state
+      dispatch({
+        type: USER_ACTION_TYPES.ADD_ACTIVITY,
+        payload: {
+          id: `act_${Date.now()}`,
+          type: 'logout',
+          description: 'User logged out',
+          timestamp: new Date().toISOString(),
+        },
       });
 
-      addActivity(
-        "subscription_changed",
-        `Subscription updated to ${updatedSubscription.plan.name}`
-      );
+      dispatch({ type: USER_ACTION_TYPES.LOGOUT });
     } catch (error: any) {
-      dispatch({ type: USER_ACTION_TYPES.SET_ERROR, payload: error.message });
-      throw error;
-    } finally {
-      dispatch({ type: USER_ACTION_TYPES.SET_LOADING, payload: false });
+      console.error('Logout error:', error);
+      // Still reset state even if logout fails
+      dispatch({ type: USER_ACTION_TYPES.LOGOUT });
     }
   };
 
-  const cancelSubscription = async () => {
-    if (!state.token) throw new Error("No authentication token");
-
+  // Update user profile
+  const updateProfile = async (updates: Partial<any>) => {
     dispatch({ type: USER_ACTION_TYPES.SET_LOADING, payload: true });
-    dispatch({ type: USER_ACTION_TYPES.CLEAR_ERROR });
 
     try {
-      const updatedSubscription = await UserAPI.cancelSubscription(state.token);
-      dispatch({
-        type: USER_ACTION_TYPES.SET_SUBSCRIPTION,
-        payload: updatedSubscription,
+      const { data, error } = await supabase.auth.updateUser({
+        data: updates,
       });
 
-      addActivity("subscription_changed", "Subscription cancelled");
-    } catch (error: any) {
-      dispatch({ type: USER_ACTION_TYPES.SET_ERROR, payload: error.message });
-      throw error;
-    } finally {
-      dispatch({ type: USER_ACTION_TYPES.SET_LOADING, payload: false });
-    }
-  };
+      if (error) throw error;
 
-  // Preferences management
-  const updatePreferences = async (
-    preferences: Partial<{
-      theme: "light" | "dark" | "system";
-      language: string;
-      timezone: string;
-      emailNotifications: {
-        documentUpdates: boolean;
-        billingReminders: boolean;
-        securityAlerts: boolean;
-        marketing: boolean;
-      };
-      documentDefaults: {
-        defaultType: string;
-        autoSave: boolean;
-        exportFormat: "pdf" | "word";
-      };
-    }>
-  ) => {
-    if (!state.token) throw new Error("No authentication token");
-
-    dispatch({ type: USER_ACTION_TYPES.SET_LOADING, payload: true });
-    dispatch({ type: USER_ACTION_TYPES.CLEAR_ERROR });
-
-    try {
-      const updatedPreferences = await UserAPI.updatePreferences(
-        state.token,
-        preferences
-      );
       dispatch({
-        type: USER_ACTION_TYPES.SET_PREFERENCES,
-        payload: updatedPreferences,
+        type: USER_ACTION_TYPES.UPDATE_PROFILE,
+        payload: updates,
       });
 
-      // Save to localStorage for persistence
-      saveToStorage("preferences", updatedPreferences);
+      // Add profile update activity
+      dispatch({
+        type: USER_ACTION_TYPES.ADD_ACTIVITY,
+        payload: {
+          id: `act_${Date.now()}`,
+          type: 'profile_updated',
+          description: 'Profile information updated',
+          timestamp: new Date().toISOString(),
+        },
+      });
     } catch (error: any) {
-      dispatch({ type: USER_ACTION_TYPES.SET_ERROR, payload: error.message });
-      throw error;
+      dispatch({
+        type: USER_ACTION_TYPES.SET_ERROR,
+        payload: error.message || 'Profile update failed',
+      });
     } finally {
       dispatch({ type: USER_ACTION_TYPES.SET_LOADING, payload: false });
     }
   };
 
-  // Activity management
-  const addActivity = (
-    type:
-      | "login"
-      | "logout"
-      | "document_created"
-      | "document_exported"
-      | "profile_updated"
-      | "subscription_changed",
-    description: string,
-    metadata?: Record<string, any>
-  ) => {
-    const activity = {
-      id: `activity_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      type,
-      description,
-      timestamp: new Date().toISOString(),
-      metadata,
-    };
-
-    dispatch({ type: USER_ACTION_TYPES.ADD_ACTIVITY, payload: activity });
+  // Update user preferences
+  const updatePreferences = (updates: Partial<any>) => {
+    dispatch({
+      type: USER_ACTION_TYPES.UPDATE_PREFERENCES,
+      payload: updates,
+    });
   };
 
-  // Session management
-  const refreshUserData = async () => {
-    if (!state.token) return;
-
+  // Validate session
+  const validateSession = async (): Promise<boolean> => {
     try {
-      await loadUserData(state.token);
-    } catch (error: any) {
-      // If token is invalid, logout user
-      if (
-        error.message.includes("unauthorized") ||
-        error.message.includes("invalid token")
-      ) {
-        await logout();
-      }
-    }
-  };
-
-  const validateSession = async () => {
-    if (!state.token) return false;
-
-    // If using test data, always return true
-    if (process.env.NODE_ENV === 'development' && state.token === 'test-token-123') {
-      return true;
-    }
-
-    try {
-      const isValid = await UserAPI.validateToken(state.token);
-      if (!isValid) {
-        await logout();
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error || !session) {
         return false;
       }
+
+      // Update last activity
+      dispatch({
+        type: USER_ACTION_TYPES.UPDATE_LAST_ACTIVITY,
+        payload: new Date().toISOString(),
+      });
+
       return true;
-    } catch {
-      await logout();
+    } catch (error) {
+      console.error('Session validation error:', error);
       return false;
     }
   };
 
-  // Initialize user from localStorage
-  const initializeFromStorage = async () => {
-    const token = localStorage.getItem("auth_token");
+  // Initialize from storage
+  const initializeFromStorage = () => {
+    try {
+      // Load user data from localStorage if available
+      const storedProfile = localStorage.getItem('user_profile');
+      const storedPreferences = localStorage.getItem('user_preferences');
+      const storedActivities = localStorage.getItem('user_activities');
 
-    if (token) {
-      dispatch({ type: USER_ACTION_TYPES.SET_TOKEN, payload: token });
-
-      // Validate token and load user data
-      const isValid = await validateSession();
-      if (isValid) {
-        dispatch({ type: USER_ACTION_TYPES.SET_AUTHENTICATED, payload: true });
-        await loadUserData(token);
+      if (storedProfile) {
+        dispatch({
+          type: USER_ACTION_TYPES.SET_PROFILE,
+          payload: JSON.parse(storedProfile),
+        });
       }
-    }
 
-    // Load preferences from localStorage
-    const savedPreferences = loadFromStorage("preferences");
-    if (savedPreferences) {
-      dispatch({
-        type: USER_ACTION_TYPES.SET_PREFERENCES,
-        payload: savedPreferences as UserPreferences,
-      });
+      if (storedPreferences) {
+        dispatch({
+          type: USER_ACTION_TYPES.SET_PREFERENCES,
+          payload: JSON.parse(storedPreferences),
+        });
+      }
+
+      if (storedActivities) {
+        dispatch({
+          type: USER_ACTION_TYPES.SET_ACTIVITIES,
+          payload: JSON.parse(storedActivities),
+        });
+      }
+    } catch (error) {
+      console.error('Error loading from storage:', error);
     }
   };
 
-  // Utility actions
+  // Save to storage
+  const saveToStorage = () => {
+    try {
+      if (state.profile) {
+        localStorage.setItem('user_profile', JSON.stringify(state.profile));
+      }
+      if (state.preferences) {
+        localStorage.setItem('user_preferences', JSON.stringify(state.preferences));
+      }
+      if (state.activities.length > 0) {
+        localStorage.setItem('user_activities', JSON.stringify(state.activities));
+      }
+    } catch (error) {
+      console.error('Error saving to storage:', error);
+    }
+  };
+
+  // Clear error
   const clearError = () => {
     dispatch({ type: USER_ACTION_TYPES.CLEAR_ERROR });
   };
 
-  const resetUser = () => {
-    dispatch({ type: USER_ACTION_TYPES.RESET_USER });
-    clearStorage();
-  };
-
   return {
-    // Authentication
     login,
     signup,
     logout,
-
-    // Profile management
     updateProfile,
-    changePassword,
-
-    // Subscription management
-    updateSubscription,
-    cancelSubscription,
-
-    // Preferences
     updatePreferences,
-
-    // Activity
-    addActivity,
-
-    // Session management
-    refreshUserData,
     validateSession,
     initializeFromStorage,
-
-    // Utilities
+    saveToStorage,
     clearError,
-    resetUser,
   };
 }

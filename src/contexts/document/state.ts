@@ -41,6 +41,25 @@ export interface MissingField {
     status:         'completed' | 'draft' | 'error';
     lastModified?:  string;
   }
+
+  // Wizard-specific interfaces
+  export interface WizardQuestion {
+    questionId: string;
+    fieldNumber: number;
+    totalFields: number;
+    title: string;
+    description: string;
+    example: string;
+    required: boolean;
+    type: 'text' | 'email' | 'date' | 'select';
+    options?: string[];
+  }
+
+  export interface WizardAnswer {
+    questionId: string;
+    answer: string;
+    timestamp: string;
+  }
   
   // Legacy interfaces for backward compatibility (can be removed later)
   export interface DocumentHistoryEntry {
@@ -87,6 +106,13 @@ export interface MissingField {
   
     // Privacy
     userConsentGiven: boolean;
+
+    // Wizard-specific state
+    wizardSessionId: string | null;
+    currentQuestion: WizardQuestion | null;
+    wizardAnswers: WizardAnswer[];
+    isWizardMode: boolean;
+    wizardProgress: { current: number; total: number };
   }
   
   // Document action types
@@ -116,7 +142,13 @@ export interface MissingField {
     | { type: typeof DOCUMENT_ACTION_TYPES.SET_DOCUMENT_HISTORY; payload: DocumentSession[] }
     | { type: typeof DOCUMENT_ACTION_TYPES.LOAD_DOCUMENT_FROM_HISTORY; payload: DocumentSession }
     | { type: typeof DOCUMENT_ACTION_TYPES.SET_USER_CONSENT; payload: boolean }
-    | { type: typeof DOCUMENT_ACTION_TYPES.RESET_SESSION };
+    | { type: typeof DOCUMENT_ACTION_TYPES.RESET_SESSION }
+    // Wizard-specific actions
+    | { type: typeof DOCUMENT_ACTION_TYPES.SET_WIZARD_SESSION; payload: { sessionId: string } }
+    | { type: typeof DOCUMENT_ACTION_TYPES.SET_CURRENT_QUESTION; payload: WizardQuestion | null }
+    | { type: typeof DOCUMENT_ACTION_TYPES.ADD_WIZARD_ANSWER; payload: WizardAnswer }
+    | { type: typeof DOCUMENT_ACTION_TYPES.SET_WIZARD_MODE; payload: boolean }
+    | { type: typeof DOCUMENT_ACTION_TYPES.UPDATE_WIZARD_PROGRESS; payload: { current: number; total: number } };
   
   // Initial state
   export const initialState: State = {
@@ -148,6 +180,13 @@ export interface MissingField {
     documentSessions: [],
   
     // Privacy
-    userConsentGiven: false
+    userConsentGiven: false,
+
+    // Wizard-specific state
+    wizardSessionId: null,
+    currentQuestion: null,
+    wizardAnswers: [],
+    isWizardMode: false,
+    wizardProgress: { current: 0, total: 0 }
   };
   

@@ -38,6 +38,13 @@ export const DOCUMENT_ACTION_TYPES = {
   // Privacy and session
   SET_USER_CONSENT: "SET_USER_CONSENT",
   RESET_SESSION: "RESET_SESSION",
+
+  // Wizard-specific actions
+  SET_WIZARD_SESSION: "SET_WIZARD_SESSION",
+  SET_CURRENT_QUESTION: "SET_CURRENT_QUESTION",
+  ADD_WIZARD_ANSWER: "ADD_WIZARD_ANSWER",
+  SET_WIZARD_MODE: "SET_WIZARD_MODE",
+  UPDATE_WIZARD_PROGRESS: "UPDATE_WIZARD_PROGRESS",
 } as const;
 
 // Storage keys for document context
@@ -49,7 +56,7 @@ export const STORAGE_KEYS = {
 } as const;
 
 // API base URL
-export const API_BASE_URL = "ws://localhost:8080/chat";
+export const API_BASE_URL = "ws://localhost:8000/stream-document";
 
 // Document types
 export const DOCUMENT_TYPES = [

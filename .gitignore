@@ -2,7 +2,6 @@
 
 # dependencies
 /node_modules
-**/node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -20,11 +19,6 @@
 
 # production
 /build
-
-# compiled output
-/dist
-**/dist
-*.tsbuildinfo
 
 # misc
 .DS_Store
@@ -45,18 +39,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS generated files
-Thumbs.db
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db

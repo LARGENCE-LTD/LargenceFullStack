@@ -1,26 +1,25 @@
-import { NextRequest } from "next/server";
-import { getDataFromToken } from "@/helpers/getDataFromToken";
-import { StatusCodes } from "http-status-codes";
-import { NextResponse } from "next/server";
-import { User } from "@/models/User";
-import { connect } from "@/database/config";
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    await connect();
-    const { id } = getDataFromToken(request);
-    const user = await User.findById(id).select("-password");
-    if (!user) {
+    const supabase = createRouteHandlerClient({ cookies });
+    
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error || !user) {
       return NextResponse.json(
-        { error: "User not found" },
-        { status: StatusCodes.NOT_FOUND }
+        { error: "Not authenticated" },
+        { status: 401 }
       );
     }
-    return NextResponse.json({ user }, { status: StatusCodes.OK });
+
+    return NextResponse.json({ user }, { status: 200 });
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message },
-      { status: StatusCodes.INTERNAL_SERVER_ERROR }
+      { status: 500 }
     );
   }
 }

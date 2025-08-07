@@ -1,6 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import { User } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 import { UserState } from './state';
 import { userReducer } from './reducer';
 import { useUserActions } from './actions';
@@ -8,7 +10,7 @@ import { initialUserState } from './state';
 import { SESSION_CHECK_INTERVAL } from './constants';
 
 // TESTING FLAG - Set to false to remove test data
-const USE_TEST_DATA = true;
+const USE_TEST_DATA = false;
 
 // Test data for development
 const testUserData = {
@@ -129,7 +131,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const initialState = USE_TEST_DATA ? {
     ...initialUserState,
     isAuthenticated: true,
-    token: "test-token-123",
+    user: testUserData.profile as any,
     profile: testUserData.profile,
     subscription: testUserData.subscription,
     usage: testUserData.usage,
@@ -144,6 +146,34 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Get actions, memoized and bound to this dispatch/state
   const actions = useUserActions(state, dispatch);
 
+  // Initialize auth state from Supabase
+  useEffect(() => {
+    if (!USE_TEST_DATA) {
+      const initializeAuth = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          dispatch({ type: 'SET_AUTHENTICATED', payload: true });
+          dispatch({ type: 'SET_USER', payload: session.user });
+        }
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          if (event === 'SIGNED_IN' && session?.user) {
+            dispatch({ type: 'SET_AUTHENTICATED', payload: true });
+            dispatch({ type: 'SET_USER', payload: session.user });
+          } else if (event === 'SIGNED_OUT') {
+            dispatch({ type: 'LOGOUT' });
+          }
+        });
+
+        return () => subscription.unsubscribe();
+      };
+
+      initializeAuth();
+    }
+  }, []);
+
   // Initialize user data from localStorage on mount (only if not using test data)
   useEffect(() => {
     if (!USE_TEST_DATA) {
@@ -154,7 +184,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Session expiry check (only run when not using test data)
   useEffect(() => {
     // Skip session validation when using test data to prevent API calls to non-existent endpoints
-    if (!state.isAuthenticated || !state.token || USE_TEST_DATA) return;
+    if (!state.isAuthenticated || !state.user || USE_TEST_DATA) return;
 
     const checkSession = async () => {
       const isValid = await actions.validateSession();
@@ -167,7 +197,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const interval = setInterval(checkSession, SESSION_CHECK_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [state.isAuthenticated, state.token]);
+  }, [state.isAuthenticated, state.user]);
 
   return (
     <UserContext.Provider value={{ state, actions }}>
@@ -215,6 +245,7 @@ export const useUserAuth = () => {
   const { state, actions } = useUser();
   return {
     isAuthenticated: state.isAuthenticated,
+    user: state.user,
     loading: state.loading,
     error: state.error,
     login: actions.login,

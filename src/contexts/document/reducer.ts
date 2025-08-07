@@ -51,11 +51,7 @@ export function reducer(state: State, action: DocumentAction): State {
       return { ...state, providedData: action.payload };
 
     case DOCUMENT_ACTION_TYPES.ADD_PROVIDED_DATA:
-      // Avoid duplicates by field
-      const filtered = state.providedData.filter(
-        (p) => p.field !== action.payload.field
-      );
-      return { ...state, providedData: [...filtered, action.payload] };
+      return { ...state, providedData: [...state.providedData, action.payload] };
 
     case DOCUMENT_ACTION_TYPES.SET_STREAMING_STATUS:
       return { ...state, isStreaming: action.payload };
@@ -67,7 +63,7 @@ export function reducer(state: State, action: DocumentAction): State {
       return { ...state, streamingContent: state.streamingContent + action.payload };
 
     case DOCUMENT_ACTION_TYPES.SET_DOCUMENT_CONTENT:
-      return { ...state, documentContent: action.payload, isStreaming: false };
+      return { ...state, documentContent: action.payload };
 
     case DOCUMENT_ACTION_TYPES.CLEAR_DOCUMENT_CONTENT:
       return { ...state, documentContent: '' };
@@ -76,7 +72,7 @@ export function reducer(state: State, action: DocumentAction): State {
       return { ...state, progress: action.payload };
 
     case DOCUMENT_ACTION_TYPES.ADD_TO_DOCUMENT_HISTORY:
-      return { ...state, documentSessions: [action.payload, ...state.documentSessions] };
+      return { ...state, documentSessions: [...state.documentSessions, action.payload] };
 
     case DOCUMENT_ACTION_TYPES.SET_DOCUMENT_HISTORY:
       return { ...state, documentSessions: action.payload };
@@ -84,27 +80,18 @@ export function reducer(state: State, action: DocumentAction): State {
     case DOCUMENT_ACTION_TYPES.LOAD_DOCUMENT_FROM_HISTORY:
       return {
         ...state,
-        sessionId: action.payload.sessionId || action.payload.id,
-        sessionStatus: 'completed',
-        originalPrompt: action.payload.originalPrompt,
-        documentType: action.payload.documentType,
-        suggestedTitle: action.payload.title,
-        missingData: action.payload.missingData || { fields: [], message: '' },
-        providedData: action.payload.providedData,
-        streamingContent: '',
         documentContent: action.payload.content,
-        isStreaming: false,
-        progress: { current: 100, total: 100 },
-        loading: false,
-        error: null
+        suggestedTitle: action.payload.title,
+        documentType: action.payload.documentType,
+        sessionStatus: 'completed'
       };
 
     case DOCUMENT_ACTION_TYPES.SET_USER_CONSENT:
       return { ...state, userConsentGiven: action.payload };
 
     case DOCUMENT_ACTION_TYPES.RESET_SESSION:
-      // documentSessions/userConsentGiven persist
       return {
+        ...state,
         sessionId: null,
         sessionStatus: 'idle',
         loading: false,
@@ -118,9 +105,36 @@ export function reducer(state: State, action: DocumentAction): State {
         documentContent: '',
         isStreaming: false,
         progress: { current: 0, total: 0 },
-        documentSessions: state.documentSessions,
-        userConsentGiven: state.userConsentGiven
+        // Reset wizard state
+        wizardSessionId: null,
+        currentQuestion: null,
+        wizardAnswers: [],
+        isWizardMode: false,
+        wizardProgress: { current: 0, total: 0 }
       };
+
+    // Wizard-specific cases
+    case DOCUMENT_ACTION_TYPES.SET_WIZARD_SESSION:
+      return { ...state, wizardSessionId: action.payload.sessionId };
+
+    case DOCUMENT_ACTION_TYPES.SET_CURRENT_QUESTION:
+      return { ...state, currentQuestion: action.payload };
+
+    case DOCUMENT_ACTION_TYPES.ADD_WIZARD_ANSWER:
+      return { 
+        ...state, 
+        wizardAnswers: [...state.wizardAnswers, action.payload],
+        wizardProgress: { 
+          current: state.wizardProgress.current + 1, 
+          total: state.wizardProgress.total 
+        }
+      };
+
+    case DOCUMENT_ACTION_TYPES.SET_WIZARD_MODE:
+      return { ...state, isWizardMode: action.payload };
+
+    case DOCUMENT_ACTION_TYPES.UPDATE_WIZARD_PROGRESS:
+      return { ...state, wizardProgress: action.payload };
 
     default:
       return state;

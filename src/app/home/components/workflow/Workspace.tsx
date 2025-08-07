@@ -11,6 +11,7 @@ import PromptInput from "./PromptInput";
 import LoadingProgress from "./LoadingProgress";
 import MissingFields from "./MissingFields";
 import TextEditor from "./TextEditor";
+import WizardQuestion from "./WizardQuestion";
 
 export default function Workspace({
   onOpenHistory,
@@ -21,6 +22,11 @@ export default function Workspace({
 
   // Determine current workflow step
   const currentStep = getWorkflowStep(state.sessionStatus);
+
+  // Handle wizard answer submission
+  const handleWizardAnswer = (questionId: string, answer: string) => {
+    actions.submitWizardAnswer(questionId, answer);
+  };
 
   // Handlers for TextEditor actions
   const handleEdit = async (content: string) => {
@@ -97,25 +103,37 @@ export default function Workspace({
       );
       break;
     case WORKFLOW_STEPS.MISSING_FIELDS:
-      content = (
-        <MissingFields
-          fields={state.missingData.fields}
-          onSubmit={(answers, userDeclined) => {
-            const providedData = Object.entries(answers).map(
-              ([field, answer]) => ({
-                field,
-                answer,
-              })
-            );
-            actions.submitMissingData(
-              state.sessionId!,
-              providedData,
-              userDeclined
-            );
-          }}
-          loading={state.loading}
-        />
-      );
+      // Show wizard question if in wizard mode
+      if (state.isWizardMode && state.currentQuestion) {
+        content = (
+          <WizardQuestion
+            question={state.currentQuestion}
+            onAnswer={handleWizardAnswer}
+            loading={state.loading}
+          />
+        );
+      } else {
+        // Fallback to old missing fields UI
+        content = (
+          <MissingFields
+            fields={state.missingData.fields}
+            onSubmit={(answers, userDeclined) => {
+              const providedData = Object.entries(answers).map(
+                ([field, answer]) => ({
+                  field,
+                  answer,
+                })
+              );
+              actions.submitMissingData(
+                state.sessionId!,
+                providedData,
+                userDeclined
+              );
+            }}
+            loading={state.loading}
+          />
+        );
+      }
       break;
     case WORKFLOW_STEPS.PREVIEW:
       content = renderTextEditor(

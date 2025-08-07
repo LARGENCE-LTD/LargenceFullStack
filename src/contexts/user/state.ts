@@ -1,4 +1,5 @@
 import { USER_ACTION_TYPES } from './constants';
+import { User } from '@supabase/supabase-js';
 
 // User profile interface
 export interface UserProfile {
@@ -74,7 +75,7 @@ export interface UserActivity {
 export interface UserState {
   // Authentication
   isAuthenticated: boolean;
-  token: string | null;
+  user: User | null;
   
   // User data
   profile: UserProfile | null;
@@ -100,7 +101,7 @@ export type UserActionType = typeof USER_ACTION_TYPES[keyof typeof USER_ACTION_T
 // User action interface
 export type UserAction =
   | { type: typeof USER_ACTION_TYPES.SET_AUTHENTICATED; payload: boolean }
-  | { type: typeof USER_ACTION_TYPES.SET_TOKEN; payload: string | null }
+  | { type: typeof USER_ACTION_TYPES.SET_USER; payload: User | null }
   | { type: typeof USER_ACTION_TYPES.LOGOUT }
   
   | { type: typeof USER_ACTION_TYPES.SET_PROFILE; payload: UserProfile | null }
@@ -153,7 +154,7 @@ const defaultUsage: UserUsage = {
 export const initialUserState: UserState = {
   // Authentication
   isAuthenticated: false,
-  token: null,
+  user: null,
   
   // User data
   profile: null,

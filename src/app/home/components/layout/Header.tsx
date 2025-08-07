@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Files, User, Settings, LogOut, MessageCircle } from "lucide-react";
+import { Files, User, Settings, LogOut } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
 import { Modal } from "@/app/components/Modal";
@@ -100,18 +100,8 @@ export default function Header({
           </button>
         </div>
 
-        {/* Right: history, chat & avatar */}
+        {/* Right: history & avatar */}
         <div className="flex items-center space-x-2 pointer-events-auto">
-          {/* Chat Button */}
-          <button
-            className="flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-gray-700 hover:bg-gray-300 cursor-pointer"
-            onClick={() => router.push("/chat")}
-            aria-label="Open chat interface"
-          >
-            <MessageCircle size={20} />
-            <span className="text-sm font-semibold">Chat</span>
-          </button>
-
           {/* History Button */}
           <button
             className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-gray-700 cursor-pointer ${
